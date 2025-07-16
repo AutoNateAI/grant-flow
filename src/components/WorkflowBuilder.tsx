@@ -60,8 +60,15 @@ const workflowSteps: WorkflowStep[] = [
     phase: "Preparation", 
     estimatedTime: "45 minutes",
     isCompleted: false,
-    prompts: ["funding-alignment-analysis"],
-    content: `Use AI to analyze the alignment between your research and the funder's priorities. This critical step ensures your proposal speaks the funder's language and addresses their specific interests.`,
+    content: `Use AI to analyze the alignment between your research and the funder's priorities. This critical step ensures your proposal speaks the funder's language and addresses their specific interests.
+
+**Use this prompt:**
+
+Analyze my research focus on [YOUR TOPIC] and the priorities of [FUNDING AGENCY] as described in the following guidelines: [PASTE GUIDELINES]. 
+Identify:
+1. 3-5 key alignment points between my research and their priorities
+2. Potential gaps or misalignments I should address
+3. Specific terminology and frameworks the funder values`,
     tips: [
       "Focus on terminology the funder uses in their guidelines",
       "Identify specific programs or initiatives your work supports",
@@ -75,9 +82,15 @@ const workflowSteps: WorkflowStep[] = [
     phase: "Strategic Planning",
     estimatedTime: "30 minutes",
     isCompleted: false,
-    prompts: ["proposal-structure-generator"],
-    templates: ["grant-proposal-template"],
-    content: `Generate a customized proposal structure that follows the funder's specific requirements while highlighting your research strengths.`,
+    content: `Generate a customized proposal structure that follows the funder's specific requirements while highlighting your research strengths.
+
+**Use this prompt:**
+
+Based on these [FUNDER] guidelines, create a detailed outline for my grant proposal on [RESEARCH TOPIC]. Include:
+1. All required sections with word/page count allocations
+2. Key points to emphasize in each section
+3. Suggested data visualization opportunities
+4. References to preliminary data I should include`,
     tips: [
       "Pay attention to word/page limits for each section",
       "Note required vs. optional sections",
@@ -91,8 +104,15 @@ const workflowSteps: WorkflowStep[] = [
     phase: "Strategic Planning",
     estimatedTime: "60 minutes", 
     isCompleted: false,
-    prompts: ["research-narrative-builder"],
-    content: `Develop the central narrative that will thread through your entire proposal, connecting the significance of the problem to your innovative solution.`,
+    content: `Develop the central narrative that will thread through your entire proposal, connecting the significance of the problem to your innovative solution.
+
+**Use this prompt:**
+
+Help me craft a compelling 2-paragraph research narrative for a [FUNDER] grant that:
+1. Establishes the significance of [PROBLEM]
+2. Identifies the gap in current approaches
+3. Introduces my innovative approach using [YOUR METHOD]
+4. Emphasizes potential impact in terms that align with [FUNDER]'s priorities`,
     tips: [
       "Start with a hook that grabs reviewer attention",
       "Clearly articulate the gap your research fills",
@@ -106,8 +126,19 @@ const workflowSteps: WorkflowStep[] = [
     phase: "Content Generation",
     estimatedTime: "90 minutes",
     isCompleted: false,
-    prompts: ["background-significance-writer"],
-    content: `Draft a compelling background section that establishes the critical importance of your research problem and positions your approach as the logical next step.`,
+    content: `Draft a compelling background section that establishes the critical importance of your research problem and positions your approach as the logical next step.
+
+**Use this prompt:**
+
+Draft a background and significance section (approximately 500 words) for my grant proposal on [RESEARCH TOPIC] that:
+1. Establishes the importance of the problem
+2. Summarizes current knowledge and approaches
+3. Identifies specific gaps or limitations
+4. Explains how my approach addresses these limitations
+5. Connects to broader impacts valued by [FUNDER]
+
+Based on these key papers:
+[PASTE 3-5 REFERENCE ABSTRACTS]`,
     tips: [
       "Use recent, high-impact citations",
       "Avoid simply summarizing literature - synthesize it",
@@ -121,8 +152,20 @@ const workflowSteps: WorkflowStep[] = [
     phase: "Content Generation",
     estimatedTime: "75 minutes",
     isCompleted: false,
-    prompts: ["aims-objectives-generator"],
-    content: `Create specific aims that are independent, feasible, and collectively address your research question while fitting within the proposed timeframe.`,
+    content: `Create specific aims that are independent, feasible, and collectively address your research question while fitting within the proposed timeframe.
+
+**Use this prompt:**
+
+Based on my research focus [BRIEF DESCRIPTION], generate 3 specific aims for a [FUNDER] grant proposal that:
+1. Are clear, measurable, and achievable within [TIMEFRAME]
+2. Build logically on each other but aren't dependent on earlier aims' success
+3. Align with [FUNDER]'s priorities
+4. Collectively address the research question: [QUESTION]
+
+For each aim, include:
+- A concise title
+- 1-2 sentence overview
+- 2-3 specific objectives or tasks`,
     tips: [
       "Each aim should be testable and have clear success metrics",
       "Aims should build on each other but not depend on prior success",
@@ -136,8 +179,19 @@ const workflowSteps: WorkflowStep[] = [
     phase: "Content Generation", 
     estimatedTime: "120 minutes",
     isCompleted: false,
-    prompts: ["methods-section-writer"],
-    content: `Provide detailed methodology that demonstrates feasibility while showing innovation and rigor in your experimental design.`,
+    content: `Provide detailed methodology that demonstrates feasibility while showing innovation and rigor in your experimental design.
+
+**Use this prompt:**
+
+Draft a methods section for Aim [NUMBER]: [AIM TITLE] that:
+1. Outlines the experimental approach
+2. Describes specific techniques, analyses, and tools
+3. Addresses potential challenges and alternative approaches
+4. Includes success metrics and validation strategies
+5. References preliminary data showing feasibility
+
+Technical details to include:
+[PASTE YOUR METHODS NOTES]`,
     tips: [
       "Include preliminary data to show feasibility",
       "Address potential technical challenges",
@@ -151,9 +205,18 @@ const workflowSteps: WorkflowStep[] = [
     phase: "Content Generation",
     estimatedTime: "60 minutes", 
     isCompleted: false,
-    prompts: ["budget-justification-writer"],
-    templates: ["budget-template"],
-    content: `Develop a realistic budget that directly supports your research aims with clear justification for every expense.`,
+    content: `Develop a realistic budget that directly supports your research aims with clear justification for every expense.
+
+**Use this prompt:**
+
+Create a detailed budget justification for a [AMOUNT] [FUNDER] grant over [DURATION] years that includes:
+1. Personnel costs and roles (including [LIST KEY PERSONNEL])
+2. Equipment needs for [LIST METHODS]
+3. Supply costs
+4. Travel expenses for [CONFERENCES/FIELDWORK]
+5. Other relevant categories
+
+For each item, provide 1-2 sentences explaining its necessity for the project.`,
     tips: [
       "Be specific about personnel time allocations",
       "Include equipment maintenance and calibration costs",
@@ -167,8 +230,22 @@ const workflowSteps: WorkflowStep[] = [
     phase: "Refinement",
     estimatedTime: "45 minutes",
     isCompleted: false,
-    prompts: ["reviewer-perspective-analyzer"],
-    content: `Take a step back and critically evaluate your proposal as an experienced reviewer would, identifying potential weaknesses and areas for improvement.`,
+    content: `Take a step back and critically evaluate your proposal as an experienced reviewer would, identifying potential weaknesses and areas for improvement.
+
+**Use this prompt:**
+
+You are an experienced grant reviewer for [FUNDER]. Review this draft section critically:
+[PASTE SECTION]
+
+Provide feedback on:
+1. Scientific merit and innovation
+2. Methodology and approach
+3. Feasibility within timeframe and budget
+4. Alignment with funding priorities
+5. Clarity and organization
+6. Potential questions or concerns
+
+Be specific about both strengths and weaknesses.`,
     tips: [
       "Look for unsupported claims or logical gaps",
       "Check that methodology matches stated aims",
@@ -182,8 +259,18 @@ const workflowSteps: WorkflowStep[] = [
     phase: "Refinement",
     estimatedTime: "90 minutes",
     isCompleted: false,
-    prompts: ["visual-asset-planner"],
-    content: `Develop clear, professional visual elements that enhance understanding and make complex concepts accessible to reviewers.`,
+    content: `Develop clear, professional visual elements that enhance understanding and make complex concepts accessible to reviewers.
+
+**Use this prompt:**
+
+Based on this textual description of [DATA/CONCEPT]:
+[PASTE DESCRIPTION]
+
+Suggest a visual representation that would strengthen my grant proposal by:
+1. Clarifying the complex concept of [CONCEPT]
+2. Making the information more accessible
+3. Providing a detailed diagram caption
+4. Suggesting an effective format (flowchart, graph, table, etc.)`,
     tips: [
       "Use consistent styling across all figures",
       "Include detailed, informative captions",
@@ -197,8 +284,16 @@ const workflowSteps: WorkflowStep[] = [
     phase: "Finalization",
     estimatedTime: "45 minutes",
     isCompleted: false,
-    prompts: ["executive-summary-writer"],
-    content: `Craft an engaging executive summary that captures the essence of your proposal and motivates reviewers to read further.`,
+    content: `Craft an engaging executive summary that captures the essence of your proposal and motivates reviewers to read further.
+
+**Use this prompt:**
+
+Create a compelling executive summary (250 words) for my grant proposal on [TOPIC] that:
+1. Hooks the reviewer with the significance of the problem
+2. Clearly states my central hypothesis
+3. Briefly outlines my innovative approach and aims
+4. Emphasizes expected outcomes and broader impacts
+5. Uses accessible language while maintaining scientific precision`,
     tips: [
       "Start with the problem's significance",
       "Clearly state your innovative approach",
@@ -212,8 +307,19 @@ const workflowSteps: WorkflowStep[] = [
     phase: "Finalization",
     estimatedTime: "60 minutes",
     isCompleted: false,
-    prompts: ["coherence-flow-checker"],
-    content: `Review your complete proposal for logical consistency, smooth transitions, and a coherent narrative thread that connects all sections.`,
+    content: `Review your complete proposal for logical consistency, smooth transitions, and a coherent narrative thread that connects all sections.
+
+**Use this prompt:**
+
+Review my complete grant proposal for coherence and flow:
+[PASTE FULL PROPOSAL]
+
+Identify:
+1. Any logical gaps between sections
+2. Inconsistent terminology or concepts
+3. Repetitive content that could be streamlined
+4. Missing transitions between major ideas
+5. Opportunities to strengthen the narrative thread`,
     tips: [
       "Check that conclusions match your stated aims",
       "Ensure consistent terminology throughout",
@@ -227,8 +333,18 @@ const workflowSteps: WorkflowStep[] = [
     phase: "Finalization", 
     estimatedTime: "90 minutes",
     isCompleted: false,
-    prompts: ["final-quality-checker"],
-    content: `Conduct a thorough final review to ensure your proposal meets all requirements and presents your research in the best possible light.`,
+    content: `Conduct a thorough final review to ensure your proposal meets all requirements and presents your research in the best possible light.
+
+**Use this prompt:**
+
+Review this grant proposal for:
+1. Alignment with all [FUNDER] guidelines and requirements
+2. Consistency in formatting, references, and terminology
+3. Grammatical issues or awkward phrasing
+4. Balance between technical detail and accessibility
+5. Compelling first and last paragraphs in each section
+
+Suggest specific improvements for any issues found.`,
     tips: [
       "Double-check all formatting requirements",
       "Verify all references are complete and correctly formatted",
