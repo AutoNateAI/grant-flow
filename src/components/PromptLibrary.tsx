@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Search, Filter, Star, Clock, Tag, Copy, Heart } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Copy, Heart, Edit, ThumbsDown, Filter } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { PromptDetail } from "./PromptDetail";
 
 interface Prompt {
   id: string;
@@ -12,93 +15,133 @@ interface Prompt {
   description: string;
   content: string;
   category: string;
+  difficulty_level: string;
+  estimated_time: string;
+  copy_count: number;
   tags: string[];
-  uses: number;
-  favorites: number;
-  rating: number;
+  is_featured: boolean;
 }
-
-const mockPrompts: Prompt[] = [
-  {
-    id: "1",
-    title: "Funding Alignment Analysis",
-    description: "Analyze how your research aligns with funder priorities",
-    content: "Analyze my research focus on [YOUR TOPIC] and the priorities of [FUNDING AGENCY] as described in the following guidelines...",
-    category: "Strategic Planning",
-    tags: ["alignment", "analysis", "strategy"],
-    uses: 1247,
-    favorites: 89,
-    rating: 4.8
-  },
-  {
-    id: "2", 
-    title: "Background & Significance",
-    description: "Draft compelling background sections for grant proposals",
-    content: "Draft a background and significance section (approximately 750-1000 words) for my grant proposal on [RESEARCH TOPIC]...",
-    category: "Content Generation",
-    tags: ["background", "significance", "writing"],
-    uses: 892,
-    favorites: 67,
-    rating: 4.6
-  },
-  {
-    id: "3",
-    title: "Specific Aims Generator", 
-    description: "Generate well-structured specific aims for your proposal",
-    content: "Based on my research focus: [BRIEF PROJECT DESCRIPTION] Generate 3-4 specific aims for a [DURATION]-year grant proposal...",
-    category: "Content Generation",
-    tags: ["aims", "objectives", "structure"],
-    uses: 743,
-    favorites: 52,
-    rating: 4.7
-  }
-];
 
 export function PromptLibrary() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedDifficulty, setSelectedDifficulty] = useState("all");
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const categories = ["All", "Strategic Planning", "Content Generation", "Refinement", "Quality Assurance"];
+  const categories = ["All", "Preparation", "Strategic Planning", "Content Generation", "Refinement", "Finalization"];
+  const difficulties = ["All", "Beginner", "Intermediate", "Advanced"];
 
-  const filteredPrompts = mockPrompts.filter(prompt => {
+  useEffect(() => {
+    fetchPrompts();
+  }, []);
+
+  const fetchPrompts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('prompts')
+        .select('*')
+        .order('is_featured', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPrompts(data || []);
+    } catch (error) {
+      console.error('Error fetching prompts:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load prompts.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredPrompts = prompts.filter(prompt => {
     const matchesSearch = prompt.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          prompt.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          prompt.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesCategory = selectedCategory === "All" || prompt.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    
+    const matchesCategory = selectedCategory === "all" || prompt.category.toLowerCase() === selectedCategory.toLowerCase();
+    const matchesDifficulty = selectedDifficulty === "all" || prompt.difficulty_level.toLowerCase() === selectedDifficulty.toLowerCase();
+    
+    return matchesSearch && matchesCategory && matchesDifficulty;
   });
 
-  const handleCopy = async (prompt: Prompt) => {
+  const handleCopyPrompt = async (prompt: Prompt) => {
     try {
-      await navigator.clipboard.writeText(prompt.content);
+      await navigator.clipboard.writeText(prompt.content || `Prompt: ${prompt.title}\n\nDescription: ${prompt.description}`);
+      
+      // Update copy count
+      await supabase
+        .from('prompts')
+        .update({ copy_count: prompt.copy_count + 1 })
+        .eq('id', prompt.id);
+
+      // Track interaction
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('user_interactions')
+          .insert({
+            user_id: user.id,
+            interaction_type: 'copy',
+            item_type: 'prompt',
+            item_id: prompt.id
+          });
+      }
+
+      // Update local state
+      setPrompts(prev => prev.map(p => 
+        p.id === prompt.id ? { ...p, copy_count: p.copy_count + 1 } : p
+      ));
+
       toast({
-        title: "Prompt copied!",
-        description: "The prompt has been copied to your clipboard.",
+        title: "Copied!",
+        description: `"${prompt.title}" copied to clipboard.`,
       });
-    } catch (err) {
+    } catch (error) {
+      console.error('Error copying prompt:', error);
       toast({
-        title: "Copy failed",
-        description: "Unable to copy prompt to clipboard.",
+        title: "Error",
+        description: "Failed to copy prompt.",
         variant: "destructive",
       });
     }
   };
 
+  if (selectedPromptId) {
+    return (
+      <PromptDetail
+        promptId={selectedPromptId}
+        onBack={() => setSelectedPromptId(null)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="glass-card p-6 rounded-2xl">
-        <h1 className="text-3xl font-bold gradient-text mb-2">Prompt Library</h1>
-        <p className="text-muted-foreground">
-          Discover and use AI prompts to accelerate your grant writing process
-        </p>
-      </div>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold gradient-text mb-2">Prompt Library</h1>
+            <p className="text-muted-foreground">
+              Discover AI prompts to accelerate your grant writing workflow
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold gradient-text">{filteredPrompts.length}</div>
+            <div className="text-sm text-muted-foreground">Available Prompts</div>
+          </div>
+        </div>
 
-      {/* Search and Filters */}
-      <div className="glass-card p-6 rounded-xl">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="relative flex-1">
+        {/* Search and Filters */}
+        <div className="space-y-4">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search prompts, tags, or descriptions..."
@@ -107,78 +150,133 @@ export function PromptLibrary() {
               className="pl-10 glass-button"
             />
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {categories.map((category) => (
-              <Button
-                key={category}
-                variant={selectedCategory === category ? "default" : "outline"}
-                className={`glass-button ${selectedCategory === category ? "bg-primary/20 border-primary/30" : ""}`}
-                onClick={() => setSelectedCategory(category)}
-              >
-                <Filter className="w-4 h-4 mr-2" />
-                {category}
-              </Button>
-            ))}
+          
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="glass-button">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category} value={category.toLowerCase()}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={selectedDifficulty} onValueChange={setSelectedDifficulty}>
+              <SelectTrigger className="glass-button">
+                <SelectValue placeholder="Difficulty" />
+              </SelectTrigger>
+              <SelectContent>
+                {difficulties.map((difficulty) => (
+                  <SelectItem key={difficulty} value={difficulty.toLowerCase()}>
+                    {difficulty}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
 
       {/* Prompts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredPrompts.map((prompt) => (
-          <Card key={prompt.id} className="glass-card p-6 interactive-card">
-            <div className="space-y-4">
-              <div className="flex items-start justify-between">
+      {loading ? (
+        <div className="flex items-center justify-center h-96">
+          <div className="text-muted-foreground">Loading prompts...</div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredPrompts.map((prompt) => (
+            <Card 
+              key={prompt.id} 
+              className="glass-card p-6 hover:bg-white/10 transition-all duration-300 group cursor-pointer"
+              onClick={() => setSelectedPromptId(prompt.id)}
+            >
+              <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-2">{prompt.title}</h3>
-                  <p className="text-muted-foreground text-sm mb-3">{prompt.description}</p>
-                  <Badge variant="secondary" className="bg-primary/20 text-primary mb-3">
-                    {prompt.category}
-                  </Badge>
-                </div>
-                <div className="flex flex-col items-end gap-2 text-sm text-muted-foreground">
-                  <span>⭐ {prompt.rating}</span>
-                  <span>❤️ {prompt.favorites}</span>
-                  <span>📋 {prompt.uses}</span>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-semibold text-lg">{prompt.title}</h3>
+                    {prompt.is_featured && <Star className="w-4 h-4 text-accent" />}
+                  </div>
+                  <p className="text-muted-foreground text-sm line-clamp-2">{prompt.description}</p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {prompt.tags.map((tag) => (
-                  <Badge key={tag} variant="outline" className="text-xs bg-white/5">
-                    #{tag}
-                  </Badge>
-                ))}
-              </div>
-
-              <div className="bg-muted/10 p-3 rounded-lg">
-                <p className="text-sm text-muted-foreground line-clamp-3">
-                  {prompt.content}
-                </p>
-              </div>
-
-              <div className="flex gap-2">
-                <Button 
-                  className="glass-button flex-1"
-                  onClick={() => handleCopy(prompt)}
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Badge variant="outline" className="bg-white/5 text-xs">
+                  <Tag className="w-3 h-3 mr-1" />
+                  {prompt.category}
+                </Badge>
+                <Badge variant="outline" className="bg-white/5 text-xs">
+                  <Clock className="w-3 h-3 mr-1" />
+                  {prompt.estimated_time}
+                </Badge>
+                <Badge 
+                  variant="outline" 
+                  className={`bg-white/5 text-xs ${
+                    prompt.difficulty_level === 'Beginner' ? 'text-green-400' :
+                    prompt.difficulty_level === 'Intermediate' ? 'text-yellow-400' :
+                    'text-red-400'
+                  }`}
                 >
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy
-                </Button>
-                <Button variant="outline" className="glass-button">
-                  <Heart className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" className="glass-button">
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" className="glass-button">
-                  <ThumbsDown className="w-4 h-4" />
-                </Button>
+                  {prompt.difficulty_level}
+                </Badge>
               </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+
+              {prompt.tags && prompt.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-4">
+                  {prompt.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="bg-accent/20 text-accent text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Copy className="w-4 h-4" />
+                    {prompt.copy_count}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="glass-button opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Handle favorite
+                    }}
+                  >
+                    <Heart className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCopyPrompt(prompt);
+                    }}
+                    size="sm"
+                    className="glass-button opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Copy className="w-4 h-4 mr-1" />
+                    Copy
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {filteredPrompts.length === 0 && !loading && (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">No prompts found matching your criteria.</p>
+        </div>
+      )}
     </div>
   );
 }

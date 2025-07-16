@@ -1,95 +1,154 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Search, Filter, Download, FileText, Calendar, Folder } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, Download, Heart, Eye, Filter, FileText } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { TemplateDetail } from "./TemplateDetail";
 
 interface Template {
   id: string;
   title: string;
   description: string;
-  type: string;
+  content: string;
   category: string;
-  downloads: number;
-  favorites: number;
-  rating: number;
-  preview: string;
+  type: string;
+  file_type: string;
+  file_size: string;
+  download_count: number;
+  created_at: string;
+  is_featured: boolean;
 }
-
-const mockTemplates: Template[] = [
-  {
-    id: "1",
-    title: "NIH Grant Proposal Template",
-    description: "Complete template for NIH R01 grant applications with all required sections",
-    type: "Notion Template",
-    category: "Federal Grants",
-    downloads: 2341,
-    favorites: 189,
-    rating: 4.9,
-    preview: "# Grant Proposal Template\n\n## Abstract/Executive Summary\n[250-300 words that summarize the entire proposal]\n\n## 1. Introduction and Background..."
-  },
-  {
-    id: "2",
-    title: "Budget Spreadsheet Template",
-    description: "Excel template for grant budget planning with automatic calculations",
-    type: "Excel File",
-    category: "Budget Planning",
-    downloads: 1876,
-    favorites: 156,
-    rating: 4.7,
-    preview: "Year 1 | Year 2 | Year 3 | Total\nPersonnel | Equipment | Supplies | Travel..."
-  },
-  {
-    id: "3",
-    title: "Timeline & Milestones Template",
-    description: "Gantt chart template for project planning and milestone tracking",
-    type: "Google Sheets",
-    category: "Project Management",
-    downloads: 1432,
-    favorites: 98,
-    rating: 4.6,
-    preview: "Q1 | Q2 | Q3 | Q4\nAim 1 Activities | Aim 2 Activities | Aim 3 Activities..."
-  }
-];
 
 export function TemplateGallery() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedType, setSelectedType] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedType, setSelectedType] = useState("all");
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const categories = ["All", "Federal Grants", "Budget Planning", "Project Management", "Writing Templates"];
-  const types = ["All", "Notion Template", "Excel File", "Google Sheets", "Word Document"];
+  const categories = ["All", "Structure", "Government", "Financial", "Planning", "Communication"];
+  const types = ["All", "Document Template", "Spreadsheet", "Presentation", "Markdown Template"];
 
-  const filteredTemplates = mockTemplates.filter(template => {
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  const fetchTemplates = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('templates')
+        .select('*')
+        .order('is_featured', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTemplates(data || []);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load templates.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredTemplates = templates.filter(template => {
     const matchesSearch = template.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          template.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "All" || template.category === selectedCategory;
-    const matchesType = selectedType === "All" || template.type === selectedType;
+    
+    const matchesCategory = selectedCategory === "all" || template.category.toLowerCase() === selectedCategory.toLowerCase();
+    const matchesType = selectedType === "all" || template.type.toLowerCase() === selectedType.toLowerCase();
+    
     return matchesSearch && matchesCategory && matchesType;
   });
 
-  const handleDownload = (template: Template) => {
-    toast({
-      title: "Template downloaded!",
-      description: `${template.title} has been downloaded to your device.`,
-    });
+  const handleDownloadTemplate = async (template: Template) => {
+    try {
+      // Create and download file
+      const blob = new Blob([template.content || ''], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${template.title}.${template.file_type?.toLowerCase() || 'txt'}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // Update download count
+      await supabase
+        .from('templates')
+        .update({ download_count: template.download_count + 1 })
+        .eq('id', template.id);
+
+      // Track interaction
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('user_interactions')
+          .insert({
+            user_id: user.id,
+            interaction_type: 'copy',
+            item_type: 'template',
+            item_id: template.id
+          });
+      }
+
+      // Update local state
+      setTemplates(prev => prev.map(t => 
+        t.id === template.id ? { ...t, download_count: t.download_count + 1 } : t
+      ));
+
+      toast({
+        title: "Download Started",
+        description: `"${template.title}" has been downloaded.`,
+      });
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      toast({
+        title: "Error",
+        description: "Failed to download template.",
+        variant: "destructive",
+      });
+    }
   };
+
+  if (selectedTemplateId) {
+    return (
+      <TemplateDetail
+        templateId={selectedTemplateId}
+        onBack={() => setSelectedTemplateId(null)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="glass-card p-6 rounded-2xl">
-        <h1 className="text-3xl font-bold gradient-text mb-2">Template Gallery</h1>
-        <p className="text-muted-foreground">
-          Download ready-to-use templates to streamline your grant writing workflow
-        </p>
-      </div>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold gradient-text mb-2">Template Gallery</h1>
+            <p className="text-muted-foreground">
+              Professional templates to streamline your grant writing process
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold gradient-text">{filteredTemplates.length}</div>
+            <div className="text-sm text-muted-foreground">Available Templates</div>
+          </div>
+        </div>
 
-      {/* Search and Filters */}
-      <div className="glass-card p-6 rounded-xl">
+        {/* Search and Filters */}
         <div className="space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -101,98 +160,105 @@ export function TemplateGallery() {
             />
           </div>
           
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex gap-2 flex-wrap">
-              <span className="text-sm text-muted-foreground flex items-center">Category:</span>
-              {categories.map((category) => (
-                <Button
-                  key={category}
-                  variant={selectedCategory === category ? "default" : "outline"}
-                  size="sm"
-                  className={`glass-button ${selectedCategory === category ? "bg-primary/20 border-primary/30" : ""}`}
-                  onClick={() => setSelectedCategory(category)}
-                >
-                  {category}
-                </Button>
-              ))}
-            </div>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="glass-button">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category} value={category.toLowerCase()}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             
-            <div className="flex gap-2 flex-wrap">
-              <span className="text-sm text-muted-foreground flex items-center">Type:</span>
-              {types.map((type) => (
-                <Button
-                  key={type}
-                  variant={selectedType === type ? "default" : "outline"}
-                  size="sm"
-                  className={`glass-button ${selectedType === type ? "bg-secondary/20 border-secondary/30" : ""}`}
-                  onClick={() => setSelectedType(type)}
-                >
-                  {type}
-                </Button>
-              ))}
-            </div>
+            <Select value={selectedType} onValueChange={setSelectedType}>
+              <SelectTrigger className="glass-button">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                {types.map((type) => (
+                  <SelectItem key={type} value={type.toLowerCase()}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
 
       {/* Templates Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredTemplates.map((template) => (
-          <Card key={template.id} className="glass-card interactive-card overflow-hidden">
-            <div className="h-48 bg-gradient-to-br from-primary/20 to-secondary/20 p-6 flex items-center justify-center">
-              <FileText className="w-16 h-16 text-primary/60" />
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div>
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-lg">{template.title}</h3>
-                  <div className="text-sm text-muted-foreground">
-                    ⭐ {template.rating}
+      {loading ? (
+        <div className="flex items-center justify-center h-96">
+          <div className="text-muted-foreground">Loading templates...</div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredTemplates.map((template) => (
+            <Card 
+              key={template.id} 
+              className="glass-card p-6 hover:bg-white/10 transition-all duration-300 group cursor-pointer"
+              onClick={() => setSelectedTemplateId(template.id)}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold text-lg">{template.title}</h3>
                   </div>
-                </div>
-                <p className="text-muted-foreground text-sm mb-3">{template.description}</p>
-                
-                <div className="flex gap-2 mb-3">
-                  <Badge variant="secondary" className="bg-primary/20 text-primary">
-                    {template.category}
-                  </Badge>
-                  <Badge variant="outline" className="bg-white/5">
-                    {template.type}
-                  </Badge>
+                  <p className="text-muted-foreground text-sm line-clamp-2">{template.description}</p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>📥 {template.downloads}</span>
-                <span>❤️ {template.favorites}</span>
+              <div className="flex flex-wrap gap-2 mb-4">
+                <Badge variant="outline" className="bg-white/5 text-xs">
+                  <Folder className="w-3 h-3 mr-1" />
+                  {template.category}
+                </Badge>
+                <Badge variant="outline" className="bg-white/5 text-xs">
+                  {template.type}
+                </Badge>
+                <Badge variant="outline" className="bg-white/5 text-xs">
+                  {template.file_type} • {template.file_size}
+                </Badge>
               </div>
 
-              <div className="bg-muted/10 p-3 rounded-lg">
-                <p className="text-xs text-muted-foreground font-mono line-clamp-3">
-                  {template.preview}
-                </p>
-              </div>
-
-              <div className="flex gap-2">
-                <Button 
-                  className="glass-button flex-1"
-                  onClick={() => handleDownload(template)}
+              <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Download className="w-4 h-4" />
+                    {template.download_count}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-4 h-4" />
+                    {new Date(template.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownloadTemplate(template);
+                  }}
+                  size="sm"
+                  className="glass-button opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  <Download className="w-4 h-4 mr-2" />
+                  <Download className="w-4 h-4 mr-1" />
                   Download
                 </Button>
-                <Button variant="outline" className="glass-button">
-                  <Eye className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" className="glass-button">
-                  <Heart className="w-4 h-4" />
-                </Button>
               </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {filteredTemplates.length === 0 && !loading && (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">No templates found matching your criteria.</p>
+        </div>
+      )}
     </div>
   );
 }

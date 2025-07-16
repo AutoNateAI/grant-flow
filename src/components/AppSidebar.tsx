@@ -9,9 +9,9 @@ interface AppSidebarProps {
 
 const menuItems = [
   { id: 'dashboard' as DashboardView, title: "Dashboard", icon: Home },
+  { id: 'workflow' as DashboardView, title: "Workflow Builder", icon: Workflow },
   { id: 'prompts' as DashboardView, title: "Prompt Library", icon: Lightbulb },
   { id: 'templates' as DashboardView, title: "Templates", icon: FileText },
-  { id: 'workflow' as DashboardView, title: "Workflow Builder", icon: Workflow },
   { id: 'community' as DashboardView, title: "Community", icon: Users },
   { id: 'favorites' as DashboardView, title: "Favorites", icon: Heart },
   { id: 'profile' as DashboardView, title: "Profile", icon: User },
@@ -22,7 +22,7 @@ export function AppSidebar({ currentView, onNavigate }: AppSidebarProps) {
   const collapsed = state === "collapsed";
 
   return (
-    <Sidebar className={`glass-card border-r-0 ${collapsed ? "w-20" : "w-72"}`}>
+    <Sidebar className="glass-card border-r-0" collapsible="icon">
       <SidebarContent className="p-4">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
