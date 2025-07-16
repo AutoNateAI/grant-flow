@@ -322,8 +322,70 @@ export function PromptDetail({ promptId, onBack }: PromptDetailProps) {
 
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-3">Prompt Content</h3>
-          <div className="glass-card p-4 bg-black/20 rounded-lg">
-            <pre className="whitespace-pre-wrap font-mono text-sm">{prompt.content}</pre>
+          <div className="glass-card p-6 bg-black/20 rounded-lg max-h-96 overflow-y-auto">
+            <div className="prose prose-invert max-w-none">
+              {prompt.content.split('\n\n').map((paragraph, index) => {
+                // Handle code blocks
+                if (paragraph.startsWith('```')) {
+                  const endIndex = prompt.content.indexOf('```', prompt.content.indexOf(paragraph) + 3);
+                  const codeContent = paragraph.replace(/```[\w]*\n?/, '').replace(/```$/, '');
+                  return (
+                    <div key={index} className="my-4">
+                      <pre className="bg-black/40 p-4 rounded-lg overflow-x-auto">
+                        <code className="text-sm font-mono text-green-400">{codeContent}</code>
+                      </pre>
+                    </div>
+                  );
+                }
+                
+                // Handle headers
+                if (paragraph.startsWith('#')) {
+                  const level = paragraph.match(/^#+/)?.[0]?.length || 1;
+                  const text = paragraph.replace(/^#+\s/, '');
+                  const HeaderTag = `h${Math.min(level + 2, 6)}` as keyof JSX.IntrinsicElements;
+                  return (
+                    <HeaderTag key={index} className="font-bold text-accent mb-2 mt-4">
+                      {text}
+                    </HeaderTag>
+                  );
+                }
+                
+                // Handle bullet points
+                if (paragraph.includes('\n- ') || paragraph.startsWith('- ')) {
+                  const items = paragraph.split('\n- ').filter(item => item.trim());
+                  return (
+                    <ul key={index} className="list-disc list-inside space-y-1 my-3">
+                      {items.map((item, itemIndex) => (
+                        <li key={itemIndex} className="text-muted-foreground">
+                          {item.replace(/^- /, '')}
+                        </li>
+                      ))}
+                    </ul>
+                  );
+                }
+                
+                // Handle numbered lists
+                if (paragraph.includes('\n1. ') || /^\d+\./.test(paragraph)) {
+                  const items = paragraph.split(/\n\d+\.\s/).filter(item => item.trim());
+                  return (
+                    <ol key={index} className="list-decimal list-inside space-y-1 my-3">
+                      {items.map((item, itemIndex) => (
+                        <li key={itemIndex} className="text-muted-foreground">
+                          {item.replace(/^\d+\.\s/, '')}
+                        </li>
+                      ))}
+                    </ol>
+                  );
+                }
+                
+                // Regular paragraphs
+                return paragraph.trim() ? (
+                  <p key={index} className="mb-3 text-muted-foreground leading-relaxed">
+                    {paragraph}
+                  </p>
+                ) : null;
+              })}
+            </div>
           </div>
         </div>
 

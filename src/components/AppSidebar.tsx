@@ -9,7 +9,7 @@ interface AppSidebarProps {
 
 const menuItems = [
   { id: 'dashboard' as DashboardView, title: "Dashboard", icon: Home },
-  { id: 'workflow' as DashboardView, title: "Workflow Builder", icon: Workflow },
+  { id: 'workflow' as DashboardView, title: "Grant Writing Workflow", icon: Workflow },
   { id: 'prompts' as DashboardView, title: "Prompt Library", icon: Lightbulb },
   { id: 'templates' as DashboardView, title: "Templates", icon: FileText },
   { id: 'community' as DashboardView, title: "Community", icon: Users },

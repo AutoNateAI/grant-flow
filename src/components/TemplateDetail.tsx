@@ -291,8 +291,68 @@ export function TemplateDetail({ templateId, onBack }: TemplateDetailProps) {
 
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-3">Template Content Preview</h3>
-          <div className="glass-card p-4 bg-black/20 rounded-lg max-h-96 overflow-y-auto">
-            <pre className="whitespace-pre-wrap font-mono text-sm">{template.content}</pre>
+          <div className="glass-card p-6 bg-black/20 rounded-lg max-h-96 overflow-y-auto">
+            <div className="prose prose-invert max-w-none">
+              {template.content.split('\n\n').map((section, index) => {
+                // Handle markdown headers
+                if (section.startsWith('#')) {
+                  const level = section.match(/^#+/)?.[0]?.length || 1;
+                  const text = section.replace(/^#+\s/, '');
+                  const HeaderTag = `h${Math.min(level + 2, 6)}` as keyof JSX.IntrinsicElements;
+                  return (
+                    <HeaderTag key={index} className="font-bold text-accent mb-3 mt-4">
+                      {text}
+                    </HeaderTag>
+                  );
+                }
+                
+                // Handle bullet points
+                if (section.includes('\n- ') || section.startsWith('- ')) {
+                  const items = section.split('\n- ').filter(item => item.trim());
+                  return (
+                    <ul key={index} className="list-disc list-inside space-y-2 my-4 pl-4">
+                      {items.map((item, itemIndex) => (
+                        <li key={itemIndex} className="text-muted-foreground">
+                          {item.replace(/^- /, '')}
+                        </li>
+                      ))}
+                    </ul>
+                  );
+                }
+                
+                // Handle numbered lists
+                if (section.includes('\n1. ') || /^\d+\./.test(section)) {
+                  const items = section.split(/\n\d+\.\s/).filter(item => item.trim());
+                  return (
+                    <ol key={index} className="list-decimal list-inside space-y-2 my-4 pl-4">
+                      {items.map((item, itemIndex) => (
+                        <li key={itemIndex} className="text-muted-foreground">
+                          {item.replace(/^\d+\.\s/, '')}
+                        </li>
+                      ))}
+                    </ol>
+                  );
+                }
+                
+                // Handle code blocks or special formatting
+                if (section.includes('```') || section.includes('[') || section.includes('---')) {
+                  return (
+                    <div key={index} className="my-4">
+                      <pre className="bg-black/40 p-4 rounded-lg overflow-x-auto">
+                        <code className="text-sm font-mono text-green-400">{section}</code>
+                      </pre>
+                    </div>
+                  );
+                }
+                
+                // Regular paragraphs
+                return section.trim() ? (
+                  <p key={index} className="mb-4 text-muted-foreground leading-relaxed">
+                    {section}
+                  </p>
+                ) : null;
+              })}
+            </div>
           </div>
         </div>
 
