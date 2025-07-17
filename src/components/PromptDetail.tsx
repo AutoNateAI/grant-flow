@@ -204,6 +204,8 @@ export function PromptDetail({ promptId, onBack }: PromptDetailProps) {
           item_id: promptId
         });
 
+      console.log('Like interaction tracked for prompt:', promptId);
+
       setPrompt(prev => prev ? { ...prev, like_count: prev.like_count + 1 } : null);
       
       toast({

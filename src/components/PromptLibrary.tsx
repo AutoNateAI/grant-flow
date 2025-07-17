@@ -170,6 +170,8 @@ export function PromptLibrary() {
             item_id: prompt.id
           });
 
+        console.log('Favorite interaction tracked for prompt:', prompt.id);
+
         toast({
           title: "Added to favorites",
           description: "Prompt added to your favorites.",

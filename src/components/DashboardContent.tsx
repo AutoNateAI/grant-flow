@@ -96,24 +96,50 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       
-      const { data, error } = await supabase
+      // Get user interactions (prompt activities)
+      const { data: interactions, error: interactionsError } = await supabase
         .from('user_interactions')
-        .select(`
-          *,
-          prompts:item_id (title),
-          templates:item_id (title)
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .gte('created_at', sevenDaysAgo.toISOString())
         .order('created_at', { ascending: false })
         .limit(10);
 
-      if (error) {
-        console.error('Error fetching recent activity:', error);
-        return;
+      if (interactionsError) {
+        console.error('Error fetching user interactions:', interactionsError);
       }
 
-      setRecentActivity(data || []);
+      // Get workflow activities (for workflow task completion)
+      const { data: workflows, error: workflowsError } = await supabase
+        .from('user_workflows')
+        .select('id, updated_at, workflow_data')
+        .eq('user_id', user.id)
+        .gte('updated_at', sevenDaysAgo.toISOString())
+        .order('updated_at', { ascending: false })
+        .limit(5);
+
+      if (workflowsError) {
+        console.error('Error fetching workflow activities:', workflowsError);
+      }
+
+      // Combine and format activities
+      const allActivities = [
+        ...(interactions || []).map(interaction => ({
+          ...interaction,
+          type: 'interaction',
+          activity_type: interaction.interaction_type,
+          activity_date: interaction.created_at
+        })),
+        ...(workflows || []).map(workflow => ({
+          ...workflow,
+          type: 'workflow',
+          activity_type: 'workflow_update',
+          activity_date: workflow.updated_at
+        }))
+      ].sort((a, b) => new Date(b.activity_date).getTime() - new Date(a.activity_date).getTime())
+       .slice(0, 10);
+
+      setRecentActivity(allActivities);
     } catch (error) {
       console.error('Error fetching recent activity:', error);
     }
@@ -130,7 +156,7 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
         .from('user_interactions')
         .select('id')
         .eq('user_id', user.id)
-        .in('interaction_type', ['copy', 'like', 'comment'])
+        .in('interaction_type', ['copy', 'like', 'comment', 'favorite'])
         .gte('created_at', sevenDaysAgo.toISOString());
 
       if (error) {
@@ -249,13 +275,15 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
             {recentActivity.length > 0 ? (
               <>
                 <div className="text-sm font-medium text-blue-400">
-                  {recentActivity[0].interaction_type === 'copy' ? 'Copied prompt' :
-                   recentActivity[0].interaction_type === 'like' ? 'Liked content' :
-                   recentActivity[0].interaction_type === 'comment' ? 'Added comment' :
+                  {recentActivity[0].activity_type === 'copy' ? 'Copied prompt' :
+                   recentActivity[0].activity_type === 'like' ? 'Liked content' :
+                   recentActivity[0].activity_type === 'comment' ? 'Added comment' :
+                   recentActivity[0].activity_type === 'favorite' ? 'Favorited prompt' :
+                   recentActivity[0].activity_type === 'workflow_update' ? 'Updated workflow' :
                    'Recent activity'}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(recentActivity[0].created_at).toLocaleDateString()}
+                  {new Date(recentActivity[0].activity_date).toLocaleDateString()}
                 </p>
               </>
             ) : (
@@ -314,25 +342,34 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
           <div className="space-y-4">
             {recentActivity.length > 0 ? (
               recentActivity.map((activity, index) => (
-                <div key={activity.id} className="flex items-start space-x-4">
+                <div key={`${activity.type}-${activity.id}-${index}`} className="flex items-start space-x-4">
                   <div className={`w-2 h-2 rounded-full mt-2 ${
-                    activity.interaction_type === 'copy' ? 'bg-blue-500' :
-                    activity.interaction_type === 'like' ? 'bg-green-500' :
-                    activity.interaction_type === 'comment' ? 'bg-purple-500' :
+                    activity.activity_type === 'copy' ? 'bg-blue-500' :
+                    activity.activity_type === 'like' ? 'bg-green-500' :
+                    activity.activity_type === 'comment' ? 'bg-purple-500' :
+                    activity.activity_type === 'favorite' ? 'bg-red-500' :
+                    activity.activity_type === 'workflow_update' ? 'bg-orange-500' :
                     'bg-gray-500'
                   }`}></div>
                   <div className="flex-1">
                     <p className="text-sm">
-                      {activity.interaction_type === 'copy' ? 'Copied' :
-                       activity.interaction_type === 'like' ? 'Liked' :
-                       activity.interaction_type === 'comment' ? 'Commented on' :
-                       'Interacted with'} {activity.item_type} 
-                      <span className="text-blue-400 ml-1">
-                        {activity.item_type === 'prompt' ? 'prompt' : activity.item_type}
-                      </span>
+                      {activity.activity_type === 'copy' ? 'Copied' :
+                       activity.activity_type === 'like' ? 'Liked' :
+                       activity.activity_type === 'comment' ? 'Commented on' :
+                       activity.activity_type === 'favorite' ? 'Favorited' :
+                       activity.activity_type === 'workflow_update' ? 'Updated' :
+                       'Interacted with'} {
+                        activity.type === 'workflow' ? 'workflow' : 
+                        activity.item_type || 'content'
+                      }
+                      {activity.type === 'workflow' && (
+                        <span className="text-blue-400 ml-1">
+                          {(activity.workflow_data as any)?.name || 'Grant Workflow'}
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(activity.created_at).toLocaleDateString()} at {new Date(activity.created_at).toLocaleTimeString()}
+                      {new Date(activity.activity_date).toLocaleDateString()} at {new Date(activity.activity_date).toLocaleTimeString()}
                     </p>
                   </div>
                 </div>
