@@ -235,6 +235,18 @@ export function PromptDetail({ promptId, onBack }: PromptDetailProps) {
 
       if (error) throw error;
 
+      // Track the comment interaction
+      await supabase
+        .from('user_interactions')
+        .insert({
+          user_id: user.id,
+          interaction_type: 'comment',
+          item_type: 'prompt',
+          item_id: promptId
+        });
+
+      console.log('Comment interaction tracked for prompt:', promptId);
+
       setComments(prev => [...prev, data]);
       setNewComment("");
       
