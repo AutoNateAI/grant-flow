@@ -1,4 +1,4 @@
-import { Book, Lightbulb, FileText, Workflow, Users, Heart, User, Home } from "lucide-react";
+import { Book, Lightbulb, Workflow, Home } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
 import { DashboardView } from "@/pages/Dashboard";
 
@@ -11,10 +11,6 @@ const menuItems = [
   { id: 'dashboard' as DashboardView, title: "Dashboard", icon: Home },
   { id: 'workflow' as DashboardView, title: "Grant Writing Workflow", icon: Workflow },
   { id: 'prompts' as DashboardView, title: "Prompt Library", icon: Lightbulb },
-  { id: 'templates' as DashboardView, title: "Templates", icon: FileText },
-  { id: 'community' as DashboardView, title: "Community", icon: Users },
-  { id: 'favorites' as DashboardView, title: "Favorites", icon: Heart },
-  { id: 'profile' as DashboardView, title: "Profile", icon: User },
 ];
 
 export function AppSidebar({ currentView, onNavigate }: AppSidebarProps) {

@@ -353,7 +353,11 @@ Suggest specific improvements for any issues found.`,
   }
 ];
 
-export function WorkflowBuilder() {
+interface WorkflowBuilderProps {
+  workflowId?: string;
+}
+
+export function WorkflowBuilder({ workflowId }: WorkflowBuilderProps = {}) {
   const [steps, setSteps] = useState<WorkflowStep[]>(workflowSteps);
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
   const [prompts, setPrompts] = useState<Prompt[]>([]);

@@ -1,143 +1,183 @@
-import { Card } from "@/components/ui/card";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Trophy, Target, Clock, Star, TrendingUp, Zap, Lightbulb, FileText, Users } from "lucide-react";
+import { BookOpen, GitBranch, BarChart3, Calendar, CheckCircle2, Clock, TrendingUp, Plus, Target } from "lucide-react";
 import { DashboardView } from "@/pages/Dashboard";
+import { WorkflowManager } from "@/components/WorkflowManager";
+import { WorkflowBuilder } from "@/components/WorkflowBuilder";
 
 interface DashboardContentProps {
   onNavigate: (view: DashboardView) => void;
 }
 
-export function DashboardContent({ onNavigate }: DashboardContentProps) {
+export const DashboardContent = ({ onNavigate }: DashboardContentProps) => {
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
+  const [showWorkflowManager, setShowWorkflowManager] = useState(true);
+
+  const handleSelectWorkflow = (workflowId: string) => {
+    setSelectedWorkflowId(workflowId);
+    setShowWorkflowManager(false);
+  };
+
+  const handleBackToManager = () => {
+    setShowWorkflowManager(true);
+    setSelectedWorkflowId(null);
+  };
+
+  if (!showWorkflowManager && selectedWorkflowId) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={handleBackToManager}>
+            ← Back to Workflows
+          </Button>
+          <h1 className="text-2xl font-bold">Grant Writing Workflow</h1>
+        </div>
+        <WorkflowBuilder workflowId={selectedWorkflowId} />
+      </div>
+    );
+  }
+
+  if (!showWorkflowManager) {
+    return <WorkflowManager onSelectWorkflow={handleSelectWorkflow} />;
+  }
+
   return (
     <div className="space-y-8">
-      {/* Welcome Header */}
-      <div className="glass-card p-8 rounded-2xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold gradient-text mb-2">
-              Welcome back, Dr. Smith!
-            </h1>
-            <p className="text-muted-foreground text-lg">
-              Continue your grant writing mastery journey
-            </p>
-          </div>
-          <div className="floating-animation">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center glow-effect">
-              <Trophy className="w-10 h-10 text-white" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Progress Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="glass-card p-6 interactive-card">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
-              <Target className="w-6 h-6 text-primary" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold mb-1">Learning Progress</h3>
-              <div className="space-y-2">
-                <Progress value={75} className="h-2" />
-                <p className="text-sm text-muted-foreground">15 of 20 modules completed</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="glass-card p-6 interactive-card">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center">
-              <Zap className="w-6 h-6 text-secondary" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold mb-1">Weekly Streak</h3>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold gradient-text">12 days</span>
-                <Badge variant="secondary" className="bg-secondary/20">
-                  🔥 On fire!
-                </Badge>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="glass-card p-6 interactive-card">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
-              <Star className="w-6 h-6 text-accent" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold mb-1">XP Points</h3>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold gradient-text">2,847</span>
-                <TrendingUp className="w-4 h-4 text-success" />
-              </div>
-            </div>
-          </div>
-        </Card>
+      {/* Welcome Section */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Grant Writing Assistant Dashboard</h1>
+        <p className="text-muted-foreground">Manage your grant workflows, access AI prompts, and streamline your funding applications.</p>
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Button 
-          className="glass-button h-24 flex flex-col gap-2"
-          onClick={() => onNavigate('prompts')}
-        >
-          <Lightbulb className="w-6 h-6" />
-          <span>Browse Prompts</span>
-        </Button>
-        
-        <Button 
-          className="glass-button h-24 flex flex-col gap-2"
-          onClick={() => onNavigate('templates')}
-        >
-          <FileText className="w-6 h-6" />
-          <span>View Templates</span>
-        </Button>
-        
-        <Button 
-          className="glass-button h-24 flex flex-col gap-2"
-          onClick={() => onNavigate('workflow')}
-        >
-          <Target className="w-6 h-6" />
-          <span>Build Workflow</span>
-        </Button>
-        
-        <Button 
-          className="glass-button h-24 flex flex-col gap-2"
-          onClick={() => onNavigate('community')}
-        >
-          <Users className="w-6 h-6" />
-          <span>Join Community</span>
-        </Button>
+      <div className="grid gap-4 md:grid-cols-3 mb-8">
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setShowWorkflowManager(false)}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Manage Workflows</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-3">Create and track your grant applications</p>
+            <Button variant="outline" size="sm" className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
+              View Workflows
+            </Button>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onNavigate('workflow')}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Start Workflow</CardTitle>
+            <GitBranch className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-3">Follow our step-by-step grant writing guide</p>
+            <Button variant="outline" size="sm" className="w-full">
+              Begin Now
+            </Button>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onNavigate('prompts')}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">AI Prompts</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-3">Access our library of proven AI prompts</p>
+            <Button variant="outline" size="sm" className="w-full">
+              Browse Library
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Recent Activity */}
-      <Card className="glass-card p-6">
-        <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-        <div className="space-y-4">
-          {[
-            { action: "Copied prompt", item: "Background Analysis Prompt", time: "2 hours ago" },
-            { action: "Favorited template", item: "NIH Grant Template", time: "1 day ago" },
-            { action: "Completed module", item: "Strategic Planning Phase", time: "2 days ago" },
-          ].map((activity, i) => (
-            <div key={i} className="flex items-center gap-4 p-3 rounded-lg bg-white/5 border border-white/10">
-              <Clock className="w-4 h-4 text-muted-foreground" />
+      {/* Statistics Overview */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Workflows</CardTitle>
+            <GitBranch className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">3</div>
+            <p className="text-xs text-muted-foreground">Grants in progress</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Prompts Available</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">50+</div>
+            <p className="text-xs text-muted-foreground">AI writing prompts</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg. Completion</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">78%</div>
+            <p className="text-xs text-muted-foreground">Workflow progress</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Time Saved</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">40%</div>
+            <p className="text-xs text-muted-foreground">Faster grant writing</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Getting Started Guide */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Getting Started</CardTitle>
+          <CardDescription>Follow these steps to maximize your grant writing success</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-start space-x-4">
+              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-medium">1</div>
               <div className="flex-1">
-                <p className="text-sm">
-                  <span className="text-foreground">{activity.action}</span>
-                  <span className="text-primary ml-1">"{activity.item}"</span>
-                </p>
-                <p className="text-xs text-muted-foreground">{activity.time}</p>
+                <h4 className="text-sm font-medium">Create Your First Workflow</h4>
+                <p className="text-xs text-muted-foreground mt-1">Start by creating a workflow for your grant application to track progress through our 13-step process.</p>
+                <Button variant="link" size="sm" className="p-0 h-auto mt-2" onClick={() => setShowWorkflowManager(false)}>
+                  Create Workflow →
+                </Button>
               </div>
             </div>
-          ))}
-        </div>
+            <div className="flex items-start space-x-4">
+              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-medium">2</div>
+              <div className="flex-1">
+                <h4 className="text-sm font-medium">Explore AI Prompts</h4>
+                <p className="text-xs text-muted-foreground mt-1">Browse our curated library of AI prompts designed specifically for grant writing success.</p>
+                <Button variant="link" size="sm" className="p-0 h-auto mt-2" onClick={() => onNavigate('prompts')}>
+                  Browse Prompts →
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-start space-x-4">
+              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-medium">3</div>
+              <div className="flex-1">
+                <h4 className="text-sm font-medium">Follow the Workflow Guide</h4>
+                <p className="text-xs text-muted-foreground mt-1">Use our interactive step-by-step guide to draft compelling grant proposals efficiently.</p>
+                <Button variant="link" size="sm" className="p-0 h-auto mt-2" onClick={() => onNavigate('workflow')}>
+                  Start Guide →
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
       </Card>
     </div>
   );
-}
+};
