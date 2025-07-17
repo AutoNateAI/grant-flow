@@ -45,7 +45,7 @@ export const DashboardContent = ({ onNavigate }: DashboardContentProps) => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="min-h-screen bg-background text-foreground space-y-8">
       {/* Welcome Section */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Grant Writing Assistant Dashboard</h1>

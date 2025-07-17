@@ -4,11 +4,13 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { DashboardContent } from "@/components/DashboardContent";
 import { PromptLibrary } from "@/components/PromptLibrary";
 import { WorkflowBuilder } from "@/components/WorkflowBuilder";
+import { WorkflowManager } from "@/components/WorkflowManager";
 
-export type DashboardView = 'dashboard' | 'prompts' | 'workflow';
+export type DashboardView = 'dashboard' | 'prompts' | 'workflow' | 'manage-workflows';
 
 const Dashboard = () => {
   const [currentView, setCurrentView] = useState<DashboardView>('dashboard');
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
 
   const renderContent = () => {
     switch (currentView) {
@@ -17,7 +19,12 @@ const Dashboard = () => {
       case 'prompts':
         return <PromptLibrary />;
       case 'workflow':
-        return <WorkflowBuilder />;
+        return <WorkflowBuilder workflowId={selectedWorkflowId} />;
+      case 'manage-workflows':
+        return <WorkflowManager onSelectWorkflow={(id) => {
+          setSelectedWorkflowId(id);
+          setCurrentView('workflow');
+        }} />;
       default:
         return <DashboardContent onNavigate={setCurrentView} />;
     }

@@ -354,7 +354,7 @@ Suggest specific improvements for any issues found.`,
 ];
 
 interface WorkflowBuilderProps {
-  workflowId?: string;
+  workflowId?: string | null;
 }
 
 export function WorkflowBuilder({ workflowId }: WorkflowBuilderProps = {}) {
@@ -362,13 +362,73 @@ export function WorkflowBuilder({ workflowId }: WorkflowBuilderProps = {}) {
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [workflowData, setWorkflowData] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchPrompts();
     fetchTemplates();
-    loadUserProgress();
-  }, []);
+    if (workflowId) {
+      fetchWorkflowData();
+    } else {
+      loadUserProgress();
+    }
+  }, [workflowId]);
+
+  const fetchWorkflowData = async () => {
+    if (!workflowId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_workflows')
+        .select('*')
+        .eq('id', workflowId)
+        .single();
+
+      if (error) throw error;
+      
+      if (data) {
+        setWorkflowData(data.workflow_data);
+        const currentStep = (data.workflow_data as any)?.current_step || 1;
+        const stepsCompleted = (data.workflow_data as any)?.steps_completed || [];
+        
+        setSteps(prev => prev.map(step => ({
+          ...step,
+          isCompleted: stepsCompleted.includes(step.id)
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching workflow:', error);
+    }
+  };
+
+  const updateWorkflowProgress = async (stepId: string, completed: boolean) => {
+    if (!workflowId) return;
+
+    try {
+      const currentCompleted = steps.filter(s => s.isCompleted).map(s => s.id);
+      const updatedCompleted = completed 
+        ? [...currentCompleted, stepId].filter((s, i, arr) => arr.indexOf(s) === i)
+        : currentCompleted.filter(s => s !== stepId);
+
+      const updatedData = {
+        ...workflowData,
+        steps_completed: updatedCompleted,
+        progress: Math.round((updatedCompleted.length / steps.length) * 100)
+      };
+
+      const { error } = await supabase
+        .from('user_workflows')
+        .update({ workflow_data: updatedData })
+        .eq('id', workflowId);
+
+      if (error) throw error;
+
+      setWorkflowData(updatedData);
+    } catch (error) {
+      console.error('Error updating workflow progress:', error);
+    }
+  };
 
   const fetchPrompts = async () => {
     try {
@@ -441,16 +501,23 @@ export function WorkflowBuilder({ workflowId }: WorkflowBuilderProps = {}) {
   };
 
   const toggleStepCompletion = (stepId: string) => {
+    const step = steps.find(s => s.id === stepId);
+    const newCompleted = !step?.isCompleted;
+    
     const updatedSteps = steps.map(step =>
-      step.id === stepId ? { ...step, isCompleted: !step.isCompleted } : step
+      step.id === stepId ? { ...step, isCompleted: newCompleted } : step
     );
     setSteps(updatedSteps);
-    saveUserProgress(updatedSteps);
     
-    const step = updatedSteps.find(s => s.id === stepId);
+    if (workflowId) {
+      updateWorkflowProgress(stepId, newCompleted);
+    } else {
+      saveUserProgress(updatedSteps);
+    }
+    
     toast({
-      title: step?.isCompleted ? "Step completed!" : "Step marked incomplete",
-      description: step?.isCompleted ? "Great progress on your grant proposal!" : "Step marked as incomplete.",
+      title: newCompleted ? "Step completed!" : "Step marked incomplete",
+      description: newCompleted ? "Great progress on your grant proposal!" : "Step marked as incomplete.",
     });
   };
 
@@ -509,6 +576,17 @@ export function WorkflowBuilder({ workflowId }: WorkflowBuilderProps = {}) {
           Follow this comprehensive AI-assisted workflow to dramatically accelerate and improve your grant writing process. 
           Each step includes specific prompts and templates to guide you through creating compelling, fundable proposals.
         </p>
+        {workflowData && (
+          <div className="mt-6 p-4 bg-muted rounded-lg max-w-2xl mx-auto">
+            <h3 className="font-semibold text-lg">{workflowData.title}</h3>
+            <p className="text-sm text-muted-foreground">
+              {workflowData.funding_agency} • {workflowData.amount} • Due: {new Date(workflowData.deadline).toLocaleDateString()}
+            </p>
+            {workflowData.description && (
+              <p className="text-sm text-muted-foreground mt-2">{workflowData.description}</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Progress Overview */}
