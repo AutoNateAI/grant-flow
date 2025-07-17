@@ -149,7 +149,7 @@ export const DashboardContent = ({ onNavigate }: DashboardContentProps) => {
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-200/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Learning Progress</CardTitle>
+            <CardTitle className="text-sm font-medium">Workflow Progress</CardTitle>
             <Target className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
@@ -164,37 +164,34 @@ export const DashboardContent = ({ onNavigate }: DashboardContentProps) => {
         
         <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-200/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Weekly Streak</CardTitle>
-            <Zap className="h-4 w-4 text-purple-500" />
+            <CardTitle className="text-sm font-medium">Tasks This Week</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-400">12 days</div>
-            <div className="flex items-center gap-2 mt-1">
-              <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-              <p className="text-xs text-muted-foreground">On fire!</p>
-            </div>
+            <div className="text-2xl font-bold text-blue-400">8 tasks</div>
+            <p className="text-xs text-muted-foreground">Completed across all grants</p>
           </CardContent>
         </Card>
         
         <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-200/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">XP Points</CardTitle>
-            <Star className="h-4 w-4 text-green-500" />
+            <CardTitle className="text-sm font-medium">Last Activity</CardTitle>
+            <Clock className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-400">2,847</div>
-            <p className="text-xs text-muted-foreground">+247 this week</p>
+            <div className="text-sm font-medium text-blue-400">Literature Review</div>
+            <p className="text-xs text-muted-foreground">NIH Grant Application</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => onNavigate('prompts')}>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => onNavigate('workflow')}>
           <CardContent className="p-6 text-center">
-            <BookOpen className="h-8 w-8 mx-auto mb-4" />
-            <h3 className="font-semibold text-lg mb-2">Browse Prompts</h3>
-            <p className="text-blue-100 text-sm">Access our AI prompt library</p>
+            <GitBranch className="h-8 w-8 mx-auto mb-4" />
+            <h3 className="font-semibold text-lg mb-2">Continue Current Workflow</h3>
+            <p className="text-blue-100 text-sm">Continue your grant writing process</p>
           </CardContent>
         </Card>
         
@@ -206,19 +203,11 @@ export const DashboardContent = ({ onNavigate }: DashboardContentProps) => {
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => onNavigate('workflow')}>
-          <CardContent className="p-6 text-center">
-            <GitBranch className="h-8 w-8 mx-auto mb-4" />
-            <h3 className="font-semibold text-lg mb-2">Build Workflow</h3>
-            <p className="text-blue-100 text-sm">Start the grant writing process</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all">
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => onNavigate('prompts')}>
           <CardContent className="p-6 text-center">
             <BookOpen className="h-8 w-8 mx-auto mb-4" />
-            <h3 className="font-semibold text-lg mb-2">Join Community</h3>
-            <p className="text-blue-100 text-sm">Connect with researchers</p>
+            <h3 className="font-semibold text-lg mb-2">Browse Prompts</h3>
+            <p className="text-blue-100 text-sm">Access our AI prompt library</p>
           </CardContent>
         </Card>
       </div>
