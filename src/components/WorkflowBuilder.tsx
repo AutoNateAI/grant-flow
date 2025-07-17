@@ -519,8 +519,10 @@ export function WorkflowBuilder({ workflowId }: WorkflowBuilderProps = {}) {
     if (newCompleted) {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        console.log('🔄 Attempting to track workflow step completion:', stepId, 'for user:', user?.id);
+        
         if (user) {
-          await supabase
+          const result = await supabase
             .from('user_interactions')
             .insert({
               user_id: user.id,
@@ -529,10 +531,12 @@ export function WorkflowBuilder({ workflowId }: WorkflowBuilderProps = {}) {
               item_id: stepId
             });
           
-          console.log('Workflow step completion tracked:', stepId);
+          console.log('✅ Workflow step completion tracked successfully:', stepId, result);
+        } else {
+          console.error('❌ No user found when trying to track workflow step');
         }
       } catch (error) {
-        console.error('Error tracking workflow step completion:', error);
+        console.error('❌ Error tracking workflow step completion:', error);
       }
     }
     
