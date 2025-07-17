@@ -11,6 +11,29 @@ import { WorkflowBuilder } from "@/components/WorkflowBuilder";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
+// Helper function to convert step IDs to readable names
+const getStepDisplayName = (stepId: string) => {
+  const stepNames: { [key: string]: string } = {
+    'research-setup': 'Research Environment Setup',
+    'funding-analysis': 'Funding Alignment Analysis', 
+    'proposal-structure': 'Proposal Structure Generation',
+    'research-narrative': 'Core Research Narrative',
+    'background-section': 'Background & Significance',
+    'aims-objectives': 'Aims and Objectives',
+    'methods-section': 'Methods Section',
+    'budget-justification': 'Budget Justification',
+    'reviewer-analysis': 'Reviewer Perspective Analysis',
+    'visual-assets': 'Visual Asset Development',
+    'executive-summary': 'Executive Summary Creation',
+    'coherence-check': 'Coherence and Flow Check',
+    'final-qa': 'Final Quality Assurance'
+  };
+  
+  return stepNames[stepId] || stepId.split('-').map(word => 
+    word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ');
+};
+
 interface DashboardContentProps {
   onNavigate: (view: DashboardView) => void;
   onSelectWorkflow?: (workflowId: string) => void;
@@ -124,10 +147,20 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
         console.error('Error fetching workflow activities:', workflowsError);
       }
 
-      // Create a map of workflow IDs to workflow data for easy lookup
-      const workflowMap = new Map();
+      // Create a map of step IDs to workflow info for easier lookup
+      const stepToWorkflowMap = new Map();
+      
+      // For each workflow, map all its completed steps to the workflow info
       workflows?.forEach(workflow => {
-        workflowMap.set(workflow.id, workflow.workflow_data);
+        const workflowData = workflow.workflow_data as any;
+        const stepsCompleted = workflowData?.steps_completed || [];
+        stepsCompleted.forEach((stepId: string) => {
+          stepToWorkflowMap.set(stepId, {
+            workflowId: workflow.id,
+            workflowName: workflowData?.name || workflowData?.title || 'Grant Workflow',
+            workflowType: workflowData?.funding_agency || 'Grant'
+          });
+        });
       });
 
       // Combine and format activities with enhanced metadata
@@ -135,13 +168,19 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
         ...(interactions || []).map(interaction => {
           let metadata = {};
           
-          // For workflow step completions, try to get workflow info
+          // For workflow step completions, get workflow info from step mapping
           if (interaction.interaction_type === 'workflow_step_completed' && interaction.item_id) {
-            const workflowData = workflowMap.get(interaction.item_id);
-            if (workflowData) {
+            const workflowInfo = stepToWorkflowMap.get(interaction.item_id);
+            if (workflowInfo) {
               metadata = {
-                workflowName: (workflowData as any)?.name || 'Grant Workflow',
-                stepName: (workflowData as any)?.currentStep || 'Step'
+                workflowName: workflowInfo.workflowName,
+                stepName: getStepDisplayName(interaction.item_id),
+                workflowType: workflowInfo.workflowType
+              };
+            } else {
+              // Fallback: try to get a readable step name
+              metadata = {
+                stepName: getStepDisplayName(interaction.item_id)
               };
             }
           }
@@ -160,7 +199,7 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
           activity_type: 'workflow_update',
           activity_date: workflow.updated_at,
           metadata: {
-            workflowName: (workflow.workflow_data as any)?.name || 'Grant Workflow'
+            workflowName: (workflow.workflow_data as any)?.name || (workflow.workflow_data as any)?.title || 'Grant Workflow'
           }
         }))
       ].sort((a, b) => new Date(b.activity_date).getTime() - new Date(a.activity_date).getTime())

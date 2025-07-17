@@ -522,14 +522,19 @@ export function WorkflowBuilder({ workflowId }: WorkflowBuilderProps = {}) {
         console.log('🔄 Attempting to track workflow step completion:', stepId, 'for user:', user?.id);
         
         if (user) {
+          // Prepare the interaction data with workflow context
+          const interactionData = {
+            user_id: user.id,
+            interaction_type: 'workflow_step_completed',
+            item_type: 'workflow_step',
+            item_id: stepId
+          };
+
+          // If we have a workflow context, we could store additional metadata
+          // For now, we'll rely on the step ID and get workflow info from current session
           const result = await supabase
             .from('user_interactions')
-            .insert({
-              user_id: user.id,
-              interaction_type: 'workflow_step_completed',
-              item_type: 'workflow_step',
-              item_id: stepId
-            });
+            .insert(interactionData);
           
           console.log('✅ Workflow step completion tracked successfully:', stepId, result);
         } else {
