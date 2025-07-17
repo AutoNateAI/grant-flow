@@ -21,11 +21,15 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
   const [userProfile, setUserProfile] = useState<any>(null);
   const [workflowStats, setWorkflowStats] = useState({ total: 0, completed: 0, avgProgress: 0 });
   const [lastWorkflowId, setLastWorkflowId] = useState<string | null>(null);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [weeklyTasksCompleted, setWeeklyTasksCompleted] = useState(0);
   const { user, signOut } = useAuth();
 
   useEffect(() => {
     fetchUserProfile();
     fetchWorkflowStats();
+    fetchRecentActivity();
+    fetchWeeklyTasksCompleted();
   }, [user]);
 
   const fetchUserProfile = async () => {
@@ -82,6 +86,61 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
       });
     } catch (error) {
       console.error('Error fetching workflow stats:', error);
+    }
+  };
+
+  const fetchRecentActivity = async () => {
+    if (!user) return;
+    
+    try {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const { data, error } = await supabase
+        .from('user_interactions')
+        .select(`
+          *,
+          prompts:item_id (title),
+          templates:item_id (title)
+        `)
+        .eq('user_id', user.id)
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('Error fetching recent activity:', error);
+        return;
+      }
+
+      setRecentActivity(data || []);
+    } catch (error) {
+      console.error('Error fetching recent activity:', error);
+    }
+  };
+
+  const fetchWeeklyTasksCompleted = async () => {
+    if (!user) return;
+    
+    try {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const { data, error } = await supabase
+        .from('user_interactions')
+        .select('id')
+        .eq('user_id', user.id)
+        .in('interaction_type', ['copy', 'like', 'comment'])
+        .gte('created_at', sevenDaysAgo.toISOString());
+
+      if (error) {
+        console.error('Error fetching weekly tasks:', error);
+        return;
+      }
+
+      setWeeklyTasksCompleted(data?.length || 0);
+    } catch (error) {
+      console.error('Error fetching weekly tasks:', error);
     }
   };
 
@@ -176,7 +235,7 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
             <CheckCircle2 className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-400">8 tasks</div>
+            <div className="text-2xl font-bold text-blue-400">{weeklyTasksCompleted} tasks</div>
             <p className="text-xs text-muted-foreground">Completed across all grants</p>
           </CardContent>
         </Card>
@@ -187,8 +246,24 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
             <Clock className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-sm font-medium text-blue-400">Literature Review</div>
-            <p className="text-xs text-muted-foreground">NIH Grant Application</p>
+            {recentActivity.length > 0 ? (
+              <>
+                <div className="text-sm font-medium text-blue-400">
+                  {recentActivity[0].interaction_type === 'copy' ? 'Copied prompt' :
+                   recentActivity[0].interaction_type === 'like' ? 'Liked content' :
+                   recentActivity[0].interaction_type === 'comment' ? 'Added comment' :
+                   'Recent activity'}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(recentActivity[0].created_at).toLocaleDateString()}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="text-sm font-medium text-blue-400">No recent activity</div>
+                <p className="text-xs text-muted-foreground">Start exploring prompts</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -233,24 +308,41 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
       {/* Recent Activity */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle>Recent Activity (Last 7 Days)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex items-start space-x-4">
-              <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
-              <div className="flex-1">
-                <p className="text-sm">Copied prompt <span className="text-blue-400">"Background Analysis Prompt"</span></p>
-                <p className="text-xs text-muted-foreground">2 hours ago</p>
+            {recentActivity.length > 0 ? (
+              recentActivity.map((activity, index) => (
+                <div key={activity.id} className="flex items-start space-x-4">
+                  <div className={`w-2 h-2 rounded-full mt-2 ${
+                    activity.interaction_type === 'copy' ? 'bg-blue-500' :
+                    activity.interaction_type === 'like' ? 'bg-green-500' :
+                    activity.interaction_type === 'comment' ? 'bg-purple-500' :
+                    'bg-gray-500'
+                  }`}></div>
+                  <div className="flex-1">
+                    <p className="text-sm">
+                      {activity.interaction_type === 'copy' ? 'Copied' :
+                       activity.interaction_type === 'like' ? 'Liked' :
+                       activity.interaction_type === 'comment' ? 'Commented on' :
+                       'Interacted with'} {activity.item_type} 
+                      <span className="text-blue-400 ml-1">
+                        {activity.item_type === 'prompt' ? 'prompt' : activity.item_type}
+                      </span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(activity.created_at).toLocaleDateString()} at {new Date(activity.created_at).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No recent activity in the last 7 days.</p>
+                <p className="text-sm text-muted-foreground mt-2">Start exploring prompts to see your activity here!</p>
               </div>
-            </div>
-            <div className="flex items-start space-x-4">
-              <div className="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
-              <div className="flex-1">
-                <p className="text-sm">Favorited workflow <span className="text-blue-400">"NIH Grant Workflow"</span></p>
-                <p className="text-xs text-muted-foreground">1 day ago</p>
-              </div>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>

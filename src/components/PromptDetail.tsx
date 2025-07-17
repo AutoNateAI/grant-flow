@@ -110,7 +110,9 @@ export function PromptDetail({ promptId, onBack }: PromptDetailProps) {
   const handleCopy = async () => {
     if (!prompt) return;
     
-    await navigator.clipboard.writeText(prompt.content);
+    // Format the content properly by replacing \\n with actual line breaks
+    const formattedContent = prompt.content.replace(/\\n/g, '\n');
+    await navigator.clipboard.writeText(formattedContent);
     
     // Update copy count
     await supabase

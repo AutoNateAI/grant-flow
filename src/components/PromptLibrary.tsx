@@ -73,7 +73,9 @@ export function PromptLibrary() {
 
   const handleCopyPrompt = async (prompt: Prompt) => {
     try {
-      await navigator.clipboard.writeText(prompt.content || `Prompt: ${prompt.title}\n\nDescription: ${prompt.description}`);
+      // Format the content properly by replacing \\n with actual line breaks
+      const formattedContent = prompt.content.replace(/\\n/g, '\n');
+      await navigator.clipboard.writeText(formattedContent || `Prompt: ${prompt.title}\n\nDescription: ${prompt.description}`);
       
       // Update copy count
       await supabase
@@ -108,6 +110,76 @@ export function PromptLibrary() {
       toast({
         title: "Error",
         description: "Failed to copy prompt.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFavoritePrompt = async (prompt: Prompt, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please log in to favorite prompts.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Check if already favorited
+      const { data: existingFavorite } = await supabase
+        .from('favorites')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('item_type', 'prompt')
+        .eq('item_id', prompt.id)
+        .single();
+
+      if (existingFavorite) {
+        // Remove from favorites
+        await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('item_type', 'prompt')
+          .eq('item_id', prompt.id);
+
+        toast({
+          title: "Removed from favorites",
+          description: "Prompt removed from your favorites.",
+        });
+      } else {
+        // Add to favorites
+        await supabase
+          .from('favorites')
+          .insert({
+            user_id: user.id,
+            item_type: 'prompt',
+            item_id: prompt.id
+          });
+
+        // Track interaction
+        await supabase
+          .from('user_interactions')
+          .insert({
+            user_id: user.id,
+            interaction_type: 'favorite',
+            item_type: 'prompt',
+            item_id: prompt.id
+          });
+
+        toast({
+          title: "Added to favorites",
+          description: "Prompt added to your favorites.",
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update favorites.",
         variant: "destructive",
       });
     }
@@ -247,10 +319,7 @@ export function PromptLibrary() {
                     variant="outline"
                     size="sm"
                     className="glass-button opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Handle favorite
-                    }}
+                    onClick={(e) => handleFavoritePrompt(prompt, e)}
                   >
                     <Heart className="w-4 h-4" />
                   </Button>
