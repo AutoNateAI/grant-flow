@@ -158,7 +158,7 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
         .from('user_interactions')
         .select('*')
         .eq('user_id', user.id)
-        .in('interaction_type', ['copy', 'like', 'comment', 'favorite'])
+        .eq('interaction_type', 'workflow_step_completed')
         .gte('created_at', sevenDaysAgo.toISOString())
         .order('created_at', { ascending: false });
 
@@ -268,7 +268,7 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-400">{weeklyTasksCompleted} tasks</div>
-                <p className="text-xs text-muted-foreground">Completed across all grants</p>
+                <p className="text-xs text-muted-foreground">Workflow steps completed</p>
               </CardContent>
             </Card>
           </DialogTrigger>
@@ -276,48 +276,54 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-purple-500" />
-                Tasks Completed This Week
+                Workflow Tasks Completed This Week
               </DialogTitle>
               <DialogDescription>
-                All your interactions and activities from the last 7 days
+                All workflow steps you've completed in the last 7 days
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 mt-4">
               {weeklyTaskDetails.length > 0 ? (
-                weeklyTaskDetails.map((task, index) => (
-                  <div key={task.id} className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
-                    <div className={`w-3 h-3 rounded-full mt-1.5 flex-shrink-0 ${
-                      task.interaction_type === 'copy' ? 'bg-blue-500' :
-                      task.interaction_type === 'like' ? 'bg-green-500' :
-                      task.interaction_type === 'comment' ? 'bg-purple-500' :
-                      task.interaction_type === 'favorite' ? 'bg-red-500' :
-                      'bg-gray-500'
-                    }`}></div>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        {task.interaction_type === 'copy' && <Copy className="w-4 h-4 text-blue-500" />}
-                        {task.interaction_type === 'like' && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                        {task.interaction_type === 'comment' && <MessageCircle className="w-4 h-4 text-purple-500" />}
-                        {task.interaction_type === 'favorite' && <Heart className="w-4 h-4 text-red-500" />}
-                        <span className="font-medium text-sm">
-                          {task.interaction_type === 'copy' ? 'Copied' :
-                           task.interaction_type === 'like' ? 'Liked' :
-                           task.interaction_type === 'comment' ? 'Commented on' :
-                           task.interaction_type === 'favorite' ? 'Favorited' :
-                           'Interacted with'} {task.item_type}
-                        </span>
+                weeklyTaskDetails.map((task, index) => {
+                  // Map step IDs to readable names
+                  const stepNames = {
+                    'research-setup': 'Research Environment Setup',
+                    'funding-analysis': 'Funding Alignment Analysis', 
+                    'proposal-structure': 'Proposal Structure Generation',
+                    'research-narrative': 'Core Research Narrative',
+                    'background-section': 'Background & Significance',
+                    'aims-objectives': 'Aims and Objectives',
+                    'methods-section': 'Methods Section',
+                    'budget-justification': 'Budget Justification',
+                    'reviewer-analysis': 'Reviewer Perspective Analysis',
+                    'visual-assets': 'Visual Asset Development',
+                    'executive-summary': 'Executive Summary Creation',
+                    'coherence-check': 'Coherence and Flow Check',
+                    'final-qa': 'Final Quality Assurance'
+                  };
+                  
+                  const stepName = stepNames[task.item_id] || task.item_id;
+                  
+                  return (
+                    <div key={task.id} className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
+                      <div className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0 bg-green-500"></div>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-500" />
+                          <span className="font-medium text-sm">Completed: {stepName}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(task.created_at).toLocaleDateString()} at {new Date(task.created_at).toLocaleTimeString()}
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(task.created_at).toLocaleDateString()} at {new Date(task.created_at).toLocaleTimeString()}
-                      </p>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="text-center py-8">
                   <CheckCircle2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No tasks completed this week yet.</p>
-                  <p className="text-sm text-muted-foreground mt-2">Start exploring prompts and workflows to see your progress here!</p>
+                  <p className="text-muted-foreground">No workflow tasks completed this week yet.</p>
+                  <p className="text-sm text-muted-foreground mt-2">Start working on your grant workflows to see your progress here!</p>
                 </div>
               )}
             </div>

@@ -500,7 +500,7 @@ export function WorkflowBuilder({ workflowId }: WorkflowBuilderProps = {}) {
     }
   };
 
-  const toggleStepCompletion = (stepId: string) => {
+  const toggleStepCompletion = async (stepId: string) => {
     const step = steps.find(s => s.id === stepId);
     const newCompleted = !step?.isCompleted;
     
@@ -513,6 +513,27 @@ export function WorkflowBuilder({ workflowId }: WorkflowBuilderProps = {}) {
       updateWorkflowProgress(stepId, newCompleted);
     } else {
       saveUserProgress(updatedSteps);
+    }
+
+    // Track step completion in user_interactions if step is being completed
+    if (newCompleted) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase
+            .from('user_interactions')
+            .insert({
+              user_id: user.id,
+              interaction_type: 'workflow_step_completed',
+              item_type: 'workflow_step',
+              item_id: stepId
+            });
+          
+          console.log('Workflow step completion tracked:', stepId);
+        }
+      } catch (error) {
+        console.error('Error tracking workflow step completion:', error);
+      }
     }
     
     toast({
