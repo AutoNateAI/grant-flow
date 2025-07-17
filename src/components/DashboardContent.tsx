@@ -12,13 +12,15 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface DashboardContentProps {
   onNavigate: (view: DashboardView) => void;
+  onSelectWorkflow?: (workflowId: string) => void;
 }
 
-export const DashboardContent = ({ onNavigate }: DashboardContentProps) => {
+export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardContentProps) => {
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [showWorkflowManager, setShowWorkflowManager] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [workflowStats, setWorkflowStats] = useState({ total: 0, completed: 0, avgProgress: 0 });
+  const [lastWorkflowId, setLastWorkflowId] = useState<string | null>(null);
   const { user, signOut } = useAuth();
 
   useEffect(() => {
@@ -52,8 +54,9 @@ export const DashboardContent = ({ onNavigate }: DashboardContentProps) => {
     try {
       const { data, error } = await supabase
         .from('user_workflows')
-        .select('workflow_data')
-        .eq('user_id', user.id);
+        .select('id, workflow_data, updated_at')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching workflows:', error);
@@ -66,6 +69,11 @@ export const DashboardContent = ({ onNavigate }: DashboardContentProps) => {
       const avgProgress = workflows.length > 0 
         ? Math.round(workflows.reduce((sum, w) => sum + ((w.workflow_data as any)?.progress || 0), 0) / workflows.length)
         : 0;
+
+      // Set the most recently updated workflow as the last workflow
+      if (workflows.length > 0) {
+        setLastWorkflowId(workflows[0].id);
+      }
 
       setWorkflowStats({
         total: totalWorkflows,
@@ -187,15 +195,25 @@ export const DashboardContent = ({ onNavigate }: DashboardContentProps) => {
 
       {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => onNavigate('workflow')}>
+        <Card 
+          className="bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all" 
+          onClick={() => {
+            if (lastWorkflowId && onSelectWorkflow) {
+              onSelectWorkflow(lastWorkflowId);
+              onNavigate('workflow');
+            } else {
+              onNavigate('manage-workflows');
+            }
+          }}
+        >
           <CardContent className="p-6 text-center">
             <GitBranch className="h-8 w-8 mx-auto mb-4" />
             <h3 className="font-semibold text-lg mb-2">Continue Current Workflow</h3>
-            <p className="text-blue-100 text-sm">Continue your grant writing process</p>
+            <p className="text-blue-100 text-sm">{lastWorkflowId ? 'Continue your grant writing process' : 'Select a workflow to continue'}</p>
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => setShowWorkflowManager(false)}>
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => onNavigate('manage-workflows')}>
           <CardContent className="p-6 text-center">
             <Target className="h-8 w-8 mx-auto mb-4" />
             <h3 className="font-semibold text-lg mb-2">View Workflows</h3>

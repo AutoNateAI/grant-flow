@@ -15,7 +15,7 @@ const Dashboard = () => {
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
-        return <DashboardContent onNavigate={setCurrentView} />;
+        return <DashboardContent onNavigate={setCurrentView} onSelectWorkflow={setSelectedWorkflowId} />;
       case 'prompts':
         return <PromptLibrary />;
       case 'workflow':
@@ -26,7 +26,7 @@ const Dashboard = () => {
           setCurrentView('workflow');
         }} />;
       default:
-        return <DashboardContent onNavigate={setCurrentView} />;
+        return <DashboardContent onNavigate={setCurrentView} onSelectWorkflow={setSelectedWorkflowId} />;
     }
   };
 
