@@ -134,6 +134,24 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
         console.error('Error fetching user interactions:', interactionsError);
       }
 
+      // Get prompts and templates for metadata lookup
+      const [promptsResult, templatesResult] = await Promise.all([
+        supabase.from('prompts').select('id, title, category').limit(100),
+        supabase.from('templates').select('id, title, category').limit(100)
+      ]);
+
+      // Create maps for quick lookup
+      const promptsMap = new Map();
+      const templatesMap = new Map();
+      
+      promptsResult.data?.forEach(prompt => {
+        promptsMap.set(prompt.id, { title: prompt.title, category: prompt.category });
+      });
+      
+      templatesResult.data?.forEach(template => {
+        templatesMap.set(template.id, { title: template.title, category: template.category });
+      });
+
       // Get workflow activities (for workflow task completion)
       const { data: workflows, error: workflowsError } = await supabase
         .from('user_workflows')
@@ -184,6 +202,26 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
               };
             }
           }
+          // For prompt activities
+          else if (interaction.item_type === 'prompt' && interaction.item_id) {
+            const promptInfo = promptsMap.get(interaction.item_id);
+            if (promptInfo) {
+              metadata = {
+                title: promptInfo.title,
+                category: promptInfo.category
+              };
+            }
+          }
+          // For template activities  
+          else if (interaction.item_type === 'template' && interaction.item_id) {
+            const templateInfo = templatesMap.get(interaction.item_id);
+            if (templateInfo) {
+              metadata = {
+                title: templateInfo.title,
+                category: templateInfo.category
+              };
+            }
+          }
           
           return {
             ...interaction,
@@ -218,6 +256,7 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       
+      // Get workflow step completions
       const { data, error } = await supabase
         .from('user_interactions')
         .select('*')
@@ -231,8 +270,37 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
         return;
       }
 
+      // Get all user workflows to map step IDs to workflow info
+      const { data: allWorkflows } = await supabase
+        .from('user_workflows')
+        .select('id, workflow_data')
+        .eq('user_id', user.id);
+
+      // Create enhanced task details with workflow metadata
+      const enhancedTaskDetails = data?.map(task => {
+        let workflowInfo = null;
+        
+        // Find which workflow this step belongs to
+        allWorkflows?.forEach(workflow => {
+          const workflowData = workflow.workflow_data as any;
+          const stepsCompleted = workflowData?.steps_completed || [];
+          if (stepsCompleted.includes(task.item_id)) {
+            workflowInfo = {
+              workflowId: workflow.id,
+              workflowName: workflowData?.name || workflowData?.title || 'Grant Workflow',
+              workflowType: workflowData?.funding_agency || 'Grant'
+            };
+          }
+        });
+
+        return {
+          ...task,
+          workflowInfo
+        };
+      }) || [];
+
       setWeeklyTasksCompleted(data?.length || 0);
-      setWeeklyTaskDetails(data || []);
+      setWeeklyTaskDetails(enhancedTaskDetails);
     } catch (error) {
       console.error('Error fetching weekly tasks:', error);
     }
@@ -349,24 +417,7 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
             <div className="space-y-4 mt-4">
               {weeklyTaskDetails.length > 0 ? (
                 weeklyTaskDetails.map((task, index) => {
-                  // Map step IDs to readable names
-                  const stepNames = {
-                    'research-setup': 'Research Environment Setup',
-                    'funding-analysis': 'Funding Alignment Analysis', 
-                    'proposal-structure': 'Proposal Structure Generation',
-                    'research-narrative': 'Core Research Narrative',
-                    'background-section': 'Background & Significance',
-                    'aims-objectives': 'Aims and Objectives',
-                    'methods-section': 'Methods Section',
-                    'budget-justification': 'Budget Justification',
-                    'reviewer-analysis': 'Reviewer Perspective Analysis',
-                    'visual-assets': 'Visual Asset Development',
-                    'executive-summary': 'Executive Summary Creation',
-                    'coherence-check': 'Coherence and Flow Check',
-                    'final-qa': 'Final Quality Assurance'
-                  };
-                  
-                  const stepName = stepNames[task.item_id] || task.item_id;
+                  const stepName = getStepDisplayName(task.item_id);
                   
                   return (
                     <div key={task.id} className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
@@ -376,6 +427,16 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
                           <CheckCircle2 className="w-4 h-4 text-green-500" />
                           <span className="font-medium text-sm">Completed: {stepName}</span>
                         </div>
+                        {task.workflowInfo && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-blue-400 text-sm">
+                              {task.workflowInfo.workflowName}
+                            </span>
+                            <span className="text-muted-foreground text-xs">
+                              ({task.workflowInfo.workflowType})
+                            </span>
+                          </div>
+                        )}
                         <p className="text-xs text-muted-foreground">
                           {new Date(task.created_at).toLocaleDateString()} at {new Date(task.created_at).toLocaleTimeString()}
                         </p>
@@ -492,14 +553,27 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
                         activity.type === 'workflow' ? 'workflow' : 
                         activity.item_type || 'content'
                       }
+                      {/* Workflow metadata */}
                       {(activity.type === 'workflow' || activity.activity_type === 'workflow_step_completed') && activity.metadata?.workflowName && (
                         <span className="text-blue-400 ml-1">
                           {activity.metadata.workflowName}
                         </span>
                       )}
+                      {/* Prompt/Template metadata */}
+                      {(activity.item_type === 'prompt' || activity.item_type === 'template') && activity.metadata?.title && (
+                        <span className="text-blue-400 ml-1">
+                          "{activity.metadata.title}"
+                        </span>
+                      )}
                       {activity.activity_type === 'workflow_step_completed' && activity.metadata?.stepName && (
                         <span className="text-muted-foreground ml-1 text-xs">
                           ({activity.metadata.stepName})
+                        </span>
+                      )}
+                      {/* Category for prompts/templates */}
+                      {(activity.item_type === 'prompt' || activity.item_type === 'template') && activity.metadata?.category && (
+                        <span className="text-muted-foreground ml-1 text-xs">
+                          in {activity.metadata.category}
                         </span>
                       )}
                     </p>
