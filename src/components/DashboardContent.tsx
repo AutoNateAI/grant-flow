@@ -123,7 +123,7 @@ export const DashboardContent = ({ onNavigate }: DashboardContentProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground space-y-8">
+    <div className="min-h-screen text-foreground space-y-8">
       {/* Header with user info and sign out */}
       <div className="flex items-center justify-between">
         <div>
