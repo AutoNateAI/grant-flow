@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { BookOpen, GitBranch, BarChart3, Calendar, CheckCircle2, Clock, TrendingUp, Plus, Target, Star, Zap, LogOut } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { BookOpen, GitBranch, BarChart3, Calendar, CheckCircle2, Clock, TrendingUp, Plus, Target, Star, Zap, LogOut, Copy, Heart, MessageCircle } from "lucide-react";
 import { DashboardView } from "@/pages/Dashboard";
 import { WorkflowManager } from "@/components/WorkflowManager";
 import { WorkflowBuilder } from "@/components/WorkflowBuilder";
@@ -23,6 +24,7 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
   const [lastWorkflowId, setLastWorkflowId] = useState<string | null>(null);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [weeklyTasksCompleted, setWeeklyTasksCompleted] = useState(0);
+  const [weeklyTaskDetails, setWeeklyTaskDetails] = useState<any[]>([]);
   const { user, signOut } = useAuth();
 
   useEffect(() => {
@@ -154,10 +156,11 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
       
       const { data, error } = await supabase
         .from('user_interactions')
-        .select('id')
+        .select('*')
         .eq('user_id', user.id)
         .in('interaction_type', ['copy', 'like', 'comment', 'favorite'])
-        .gte('created_at', sevenDaysAgo.toISOString());
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching weekly tasks:', error);
@@ -165,6 +168,7 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
       }
 
       setWeeklyTasksCompleted(data?.length || 0);
+      setWeeklyTaskDetails(data || []);
     } catch (error) {
       console.error('Error fetching weekly tasks:', error);
     }
@@ -255,16 +259,70 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-200/20">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tasks This Week</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-400">{weeklyTasksCompleted} tasks</div>
-            <p className="text-xs text-muted-foreground">Completed across all grants</p>
-          </CardContent>
-        </Card>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-200/20 cursor-pointer hover:bg-purple-500/5 transition-all">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Tasks This Week</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-purple-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-400">{weeklyTasksCompleted} tasks</div>
+                <p className="text-xs text-muted-foreground">Completed across all grants</p>
+              </CardContent>
+            </Card>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-purple-500" />
+                Tasks Completed This Week
+              </DialogTitle>
+              <DialogDescription>
+                All your interactions and activities from the last 7 days
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              {weeklyTaskDetails.length > 0 ? (
+                weeklyTaskDetails.map((task, index) => (
+                  <div key={task.id} className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
+                    <div className={`w-3 h-3 rounded-full mt-1.5 flex-shrink-0 ${
+                      task.interaction_type === 'copy' ? 'bg-blue-500' :
+                      task.interaction_type === 'like' ? 'bg-green-500' :
+                      task.interaction_type === 'comment' ? 'bg-purple-500' :
+                      task.interaction_type === 'favorite' ? 'bg-red-500' :
+                      'bg-gray-500'
+                    }`}></div>
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        {task.interaction_type === 'copy' && <Copy className="w-4 h-4 text-blue-500" />}
+                        {task.interaction_type === 'like' && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                        {task.interaction_type === 'comment' && <MessageCircle className="w-4 h-4 text-purple-500" />}
+                        {task.interaction_type === 'favorite' && <Heart className="w-4 h-4 text-red-500" />}
+                        <span className="font-medium text-sm">
+                          {task.interaction_type === 'copy' ? 'Copied' :
+                           task.interaction_type === 'like' ? 'Liked' :
+                           task.interaction_type === 'comment' ? 'Commented on' :
+                           task.interaction_type === 'favorite' ? 'Favorited' :
+                           'Interacted with'} {task.item_type}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(task.created_at).toLocaleDateString()} at {new Date(task.created_at).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <CheckCircle2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No tasks completed this week yet.</p>
+                  <p className="text-sm text-muted-foreground mt-2">Start exploring prompts and workflows to see your progress here!</p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
         
         <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-200/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
