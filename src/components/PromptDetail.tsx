@@ -324,7 +324,7 @@ export function PromptDetail({ promptId, onBack }: PromptDetailProps) {
           <h3 className="text-lg font-semibold mb-3">Prompt Content</h3>
           <div className="glass-card p-6 bg-black/20 rounded-lg max-h-96 overflow-y-auto">
             <div className="prose prose-invert max-w-none">
-              {prompt.content.split('\n\n').map((paragraph, index) => {
+              {prompt.content.replace(/\\n/g, '\n').split('\n\n').map((paragraph, index) => {
                 // Handle code blocks
                 if (paragraph.startsWith('```')) {
                   const endIndex = prompt.content.indexOf('```', prompt.content.indexOf(paragraph) + 3);

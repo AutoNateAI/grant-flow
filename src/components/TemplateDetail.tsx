@@ -293,7 +293,7 @@ export function TemplateDetail({ templateId, onBack }: TemplateDetailProps) {
           <h3 className="text-lg font-semibold mb-3">Template Content Preview</h3>
           <div className="glass-card p-6 bg-black/20 rounded-lg max-h-96 overflow-y-auto">
             <div className="prose prose-invert max-w-none">
-              {template.content.split('\n\n').map((section, index) => {
+              {template.content.replace(/\\n/g, '\n').split('\n\n').map((section, index) => {
                 // Handle markdown headers
                 if (section.startsWith('#')) {
                   const level = section.match(/^#+/)?.[0]?.length || 1;

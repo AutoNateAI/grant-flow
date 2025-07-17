@@ -598,26 +598,54 @@ export function WorkflowBuilder() {
                 {expandedSteps.has(step.id) && (
                   <div className="border-t border-white/10 p-6 bg-black/20">
                     {step.content && (
-                      <div className="mb-6">
-                        <h4 className="font-semibold mb-3 flex items-center gap-2">
-                          <Target className="w-4 h-4" />
-                          Step Details
-                        </h4>
-                        <div className="prose prose-invert max-w-none">
-                          {step.content.split('\n').map((line, i) => {
-                            if (line.startsWith('•')) {
-                              return (
-                                <div key={i} className="flex items-start gap-2 mb-2">
-                                  <div className="w-1 h-1 rounded-full bg-accent mt-2"></div>
-                                  <span className="text-muted-foreground">{line.substring(1).trim()}</span>
+                      <div className="mb-6 space-y-6">
+                        {(() => {
+                          const parts = step.content.split('**Use this prompt:**');
+                          const beforePrompt = parts[0];
+                          const promptContent = parts[1];
+
+                          return (
+                            <>
+                              {/* Step Details Section */}
+                              <div>
+                                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                  <Target className="w-4 h-4" />
+                                  Step Details
+                                </h4>
+                                <div className="prose prose-invert max-w-none">
+                                  {beforePrompt.split('\n').map((line, i) => {
+                                    if (line.startsWith('•')) {
+                                      return (
+                                        <div key={i} className="flex items-start gap-2 mb-2">
+                                          <div className="w-1 h-1 rounded-full bg-accent mt-2"></div>
+                                          <span className="text-muted-foreground">{line.substring(1).trim()}</span>
+                                        </div>
+                                      );
+                                    }
+                                    return line.trim() ? (
+                                      <p key={i} className="mb-3 text-muted-foreground">{line}</p>
+                                    ) : null;
+                                  })}
                                 </div>
-                              );
-                            }
-                            return line.trim() ? (
-                              <p key={i} className="mb-3 text-muted-foreground">{line}</p>
-                            ) : null;
-                          })}
-                        </div>
+                              </div>
+
+                              {/* Prompt Section */}
+                              {promptContent && (
+                                <div>
+                                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                    <Copy className="w-4 h-4 text-accent" />
+                                    📝 Use this prompt:
+                                  </h4>
+                                  <div className="glass-card p-4 bg-black/20 rounded-lg border-l-4 border-accent">
+                                    <pre className="whitespace-pre-wrap text-sm font-mono text-green-400 leading-relaxed">
+                                      {promptContent.trim()}
+                                    </pre>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     )}
 
