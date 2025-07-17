@@ -124,19 +124,44 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
         console.error('Error fetching workflow activities:', workflowsError);
       }
 
-      // Combine and format activities
+      // Create a map of workflow IDs to workflow data for easy lookup
+      const workflowMap = new Map();
+      workflows?.forEach(workflow => {
+        workflowMap.set(workflow.id, workflow.workflow_data);
+      });
+
+      // Combine and format activities with enhanced metadata
       const allActivities = [
-        ...(interactions || []).map(interaction => ({
-          ...interaction,
-          type: 'interaction',
-          activity_type: interaction.interaction_type,
-          activity_date: interaction.created_at
-        })),
+        ...(interactions || []).map(interaction => {
+          let metadata = {};
+          
+          // For workflow step completions, try to get workflow info
+          if (interaction.interaction_type === 'workflow_step_completed' && interaction.item_id) {
+            const workflowData = workflowMap.get(interaction.item_id);
+            if (workflowData) {
+              metadata = {
+                workflowName: (workflowData as any)?.name || 'Grant Workflow',
+                stepName: (workflowData as any)?.currentStep || 'Step'
+              };
+            }
+          }
+          
+          return {
+            ...interaction,
+            type: 'interaction',
+            activity_type: interaction.interaction_type,
+            activity_date: interaction.created_at,
+            metadata
+          };
+        }),
         ...(workflows || []).map(workflow => ({
           ...workflow,
           type: 'workflow',
           activity_type: 'workflow_update',
-          activity_date: workflow.updated_at
+          activity_date: workflow.updated_at,
+          metadata: {
+            workflowName: (workflow.workflow_data as any)?.name || 'Grant Workflow'
+          }
         }))
       ].sort((a, b) => new Date(b.activity_date).getTime() - new Date(a.activity_date).getTime())
        .slice(0, 10);
@@ -422,13 +447,20 @@ export const DashboardContent = ({ onNavigate, onSelectWorkflow }: DashboardCont
                        activity.activity_type === 'comment' ? 'Commented on' :
                        activity.activity_type === 'favorite' ? 'Favorited' :
                        activity.activity_type === 'workflow_update' ? 'Updated' :
+                       activity.activity_type === 'workflow_step_completed' ? 'Completed' :
                        'Interacted with'} {
+                        activity.activity_type === 'workflow_step_completed' ? 'step in' :
                         activity.type === 'workflow' ? 'workflow' : 
                         activity.item_type || 'content'
                       }
-                      {activity.type === 'workflow' && (
+                      {(activity.type === 'workflow' || activity.activity_type === 'workflow_step_completed') && activity.metadata?.workflowName && (
                         <span className="text-blue-400 ml-1">
-                          {(activity.workflow_data as any)?.name || 'Grant Workflow'}
+                          {activity.metadata.workflowName}
+                        </span>
+                      )}
+                      {activity.activity_type === 'workflow_step_completed' && activity.metadata?.stepName && (
+                        <span className="text-muted-foreground ml-1 text-xs">
+                          ({activity.metadata.stepName})
                         </span>
                       )}
                     </p>
