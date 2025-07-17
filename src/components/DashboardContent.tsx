@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { BookOpen, GitBranch, BarChart3, Calendar, CheckCircle2, Clock, TrendingUp, Plus, Target } from "lucide-react";
+import { BookOpen, GitBranch, BarChart3, Calendar, CheckCircle2, Clock, TrendingUp, Plus, Target, Star, Zap, LogOut } from "lucide-react";
 import { DashboardView } from "@/pages/Dashboard";
 import { WorkflowManager } from "@/components/WorkflowManager";
 import { WorkflowBuilder } from "@/components/WorkflowBuilder";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DashboardContentProps {
   onNavigate: (view: DashboardView) => void;
@@ -15,6 +17,65 @@ interface DashboardContentProps {
 export const DashboardContent = ({ onNavigate }: DashboardContentProps) => {
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [showWorkflowManager, setShowWorkflowManager] = useState(true);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [workflowStats, setWorkflowStats] = useState({ total: 0, completed: 0, avgProgress: 0 });
+  const { user, signOut } = useAuth();
+
+  useEffect(() => {
+    fetchUserProfile();
+    fetchWorkflowStats();
+  }, [user]);
+
+  const fetchUserProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching profile:', error);
+      } else if (data) {
+        setUserProfile(data);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+
+  const fetchWorkflowStats = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_workflows')
+        .select('workflow_data')
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error fetching workflows:', error);
+        return;
+      }
+
+      const workflows = data || [];
+      const totalWorkflows = workflows.length;
+      const completedWorkflows = workflows.filter(w => (w.workflow_data as any)?.progress === 100).length;
+      const avgProgress = workflows.length > 0 
+        ? Math.round(workflows.reduce((sum, w) => sum + ((w.workflow_data as any)?.progress || 0), 0) / workflows.length)
+        : 0;
+
+      setWorkflowStats({
+        total: totalWorkflows,
+        completed: completedWorkflows,
+        avgProgress
+      });
+    } catch (error) {
+      console.error('Error fetching workflow stats:', error);
+    }
+  };
 
   const handleSelectWorkflow = (workflowId: string) => {
     setSelectedWorkflowId(workflowId);
@@ -29,11 +90,17 @@ export const DashboardContent = ({ onNavigate }: DashboardContentProps) => {
   if (!showWorkflowManager && selectedWorkflowId) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={handleBackToManager}>
-            ← Back to Workflows
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" onClick={handleBackToManager}>
+              ← Back to Workflows
+            </Button>
+            <h1 className="text-2xl font-bold">Grant Writing Workflow</h1>
+          </div>
+          <Button variant="outline" onClick={() => signOut()}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
           </Button>
-          <h1 className="text-2xl font-bold">Grant Writing Workflow</h1>
         </div>
         <WorkflowBuilder workflowId={selectedWorkflowId} />
       </div>
@@ -41,138 +108,140 @@ export const DashboardContent = ({ onNavigate }: DashboardContentProps) => {
   }
 
   if (!showWorkflowManager) {
-    return <WorkflowManager onSelectWorkflow={handleSelectWorkflow} />;
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">My Grant Workflows</h1>
+          <Button variant="outline" onClick={() => signOut()}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
+        </div>
+        <WorkflowManager onSelectWorkflow={handleSelectWorkflow} />
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-background text-foreground space-y-8">
-      {/* Welcome Section */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Grant Writing Assistant Dashboard</h1>
-        <p className="text-muted-foreground">Manage your grant workflows, access AI prompts, and streamline your funding applications.</p>
+      {/* Header with user info and sign out */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold mb-2">
+            Welcome back, {userProfile?.display_name || 'Researcher'}!
+          </h1>
+          <p className="text-xl text-muted-foreground">
+            Continue your grant writing mastery journey
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+            <Target className="w-6 h-6 text-white" />
+          </div>
+          <Button variant="outline" onClick={() => signOut()}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
+        </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-3 mb-8">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setShowWorkflowManager(false)}>
+      {/* Progress Stats */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-200/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Manage Workflows</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Learning Progress</CardTitle>
+            <Target className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-3">Create and track your grant applications</p>
-            <Button variant="outline" size="sm" className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
-              View Workflows
-            </Button>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{workflowStats.completed} of {workflowStats.total} workflows completed</span>
+              </div>
+              <Progress value={workflowStats.total > 0 ? (workflowStats.completed / workflowStats.total) * 100 : 0} className="h-2" />
+            </div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onNavigate('workflow')}>
+        
+        <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-200/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Start Workflow</CardTitle>
-            <GitBranch className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Weekly Streak</CardTitle>
+            <Zap className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-3">Follow our step-by-step grant writing guide</p>
-            <Button variant="outline" size="sm" className="w-full">
-              Begin Now
-            </Button>
+            <div className="text-2xl font-bold text-blue-400">12 days</div>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+              <p className="text-xs text-muted-foreground">On fire!</p>
+            </div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onNavigate('prompts')}>
+        
+        <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-200/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">AI Prompts</CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">XP Points</CardTitle>
+            <Star className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-3">Access our library of proven AI prompts</p>
-            <Button variant="outline" size="sm" className="w-full">
-              Browse Library
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Statistics Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Workflows</CardTitle>
-            <GitBranch className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <p className="text-xs text-muted-foreground">Grants in progress</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Prompts Available</CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">50+</div>
-            <p className="text-xs text-muted-foreground">AI writing prompts</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Completion</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">78%</div>
-            <p className="text-xs text-muted-foreground">Workflow progress</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Time Saved</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">40%</div>
-            <p className="text-xs text-muted-foreground">Faster grant writing</p>
+            <div className="text-2xl font-bold text-blue-400">2,847</div>
+            <p className="text-xs text-muted-foreground">+247 this week</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Getting Started Guide */}
+      {/* Quick Actions */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => onNavigate('prompts')}>
+          <CardContent className="p-6 text-center">
+            <BookOpen className="h-8 w-8 mx-auto mb-4" />
+            <h3 className="font-semibold text-lg mb-2">Browse Prompts</h3>
+            <p className="text-blue-100 text-sm">Access our AI prompt library</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => setShowWorkflowManager(false)}>
+          <CardContent className="p-6 text-center">
+            <Target className="h-8 w-8 mx-auto mb-4" />
+            <h3 className="font-semibold text-lg mb-2">View Workflows</h3>
+            <p className="text-blue-100 text-sm">Manage your grant projects</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => onNavigate('workflow')}>
+          <CardContent className="p-6 text-center">
+            <GitBranch className="h-8 w-8 mx-auto mb-4" />
+            <h3 className="font-semibold text-lg mb-2">Build Workflow</h3>
+            <p className="text-blue-100 text-sm">Start the grant writing process</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all">
+          <CardContent className="p-6 text-center">
+            <BookOpen className="h-8 w-8 mx-auto mb-4" />
+            <h3 className="font-semibold text-lg mb-2">Join Community</h3>
+            <p className="text-blue-100 text-sm">Connect with researchers</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Activity */}
       <Card>
         <CardHeader>
-          <CardTitle>Getting Started</CardTitle>
-          <CardDescription>Follow these steps to maximize your grant writing success</CardDescription>
+          <CardTitle>Recent Activity</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-medium">1</div>
+              <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
               <div className="flex-1">
-                <h4 className="text-sm font-medium">Create Your First Workflow</h4>
-                <p className="text-xs text-muted-foreground mt-1">Start by creating a workflow for your grant application to track progress through our 13-step process.</p>
-                <Button variant="link" size="sm" className="p-0 h-auto mt-2" onClick={() => setShowWorkflowManager(false)}>
-                  Create Workflow →
-                </Button>
+                <p className="text-sm">Copied prompt <span className="text-blue-400">"Background Analysis Prompt"</span></p>
+                <p className="text-xs text-muted-foreground">2 hours ago</p>
               </div>
             </div>
             <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-medium">2</div>
+              <div className="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
               <div className="flex-1">
-                <h4 className="text-sm font-medium">Explore AI Prompts</h4>
-                <p className="text-xs text-muted-foreground mt-1">Browse our curated library of AI prompts designed specifically for grant writing success.</p>
-                <Button variant="link" size="sm" className="p-0 h-auto mt-2" onClick={() => onNavigate('prompts')}>
-                  Browse Prompts →
-                </Button>
-              </div>
-            </div>
-            <div className="flex items-start space-x-4">
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-medium">3</div>
-              <div className="flex-1">
-                <h4 className="text-sm font-medium">Follow the Workflow Guide</h4>
-                <p className="text-xs text-muted-foreground mt-1">Use our interactive step-by-step guide to draft compelling grant proposals efficiently.</p>
-                <Button variant="link" size="sm" className="p-0 h-auto mt-2" onClick={() => onNavigate('workflow')}>
-                  Start Guide →
-                </Button>
+                <p className="text-sm">Favorited workflow <span className="text-blue-400">"NIH Grant Workflow"</span></p>
+                <p className="text-xs text-muted-foreground">1 day ago</p>
               </div>
             </div>
           </div>
