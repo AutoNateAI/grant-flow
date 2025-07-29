@@ -6,7 +6,8 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   // Set the base path for GitHub Pages deployment
-  base: mode === 'production' ? '/grant-flow/' : '/',
+  // Using root path '/' for custom domain (grants.autonateai.com)
+  base: '/',
   server: {
     host: "::",
     port: 8080,

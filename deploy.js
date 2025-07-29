@@ -18,6 +18,14 @@ console.log('Created .nojekyll file');
 const source404 = path.join(__dirname, 'public', '404.html');
 const dest404 = path.join(distDir, '404.html');
 
+// Copy CNAME file to dist directory for custom domain
+const sourceCNAME = path.join(__dirname, 'public', 'CNAME');
+const destCNAME = path.join(distDir, 'CNAME');
+if (fs.existsSync(sourceCNAME)) {
+  fs.copyFileSync(sourceCNAME, destCNAME);
+  console.log('Copied CNAME file to dist directory');
+}
+
 if (fs.existsSync(source404)) {
   fs.copyFileSync(source404, dest404);
   console.log('Copied 404.html to dist directory');
@@ -30,7 +38,7 @@ if (fs.existsSync(source404)) {
   <meta charset="utf-8">
   <title>Page not found</title>
   <script>
-    window.location.href = window.location.origin + '/grant-flow';
+    window.location.href = window.location.origin + '/';
   </script>
 </head>
 <body>
